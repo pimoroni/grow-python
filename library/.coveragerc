@@ -1,0 +1,4 @@
+[run]
+source = enviroplus
+omit =
+    .tox/*
