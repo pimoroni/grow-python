@@ -18,15 +18,15 @@ class SMBusFakeDevice(MockSMBus):
 def cleanup():
     yield None
     try:
-        del sys.modules['enviroplus']
+        del sys.modules['grow']
     except KeyError:
         pass
     try:
-        del sys.modules['enviroplus.noise']
+        del sys.modules['grow.moisture']
     except KeyError:
         pass
     try:
-        del sys.modules['enviroplus.gas']
+        del sys.modules['grow.pump']
     except KeyError:
         pass
 
@@ -70,15 +70,6 @@ def atexit():
     sys.modules['atexit'] = atexit
     yield atexit
     del sys.modules['atexit']
-
-
-@pytest.fixture(scope='function', autouse=False)
-def sounddevice():
-    """Mock sounddevice module."""
-    sounddevice = mock.MagicMock()
-    sys.modules['sounddevice'] = sounddevice
-    yield sounddevice
-    del sys.modules['sounddevice']
 
 
 @pytest.fixture(scope='function', autouse=False)

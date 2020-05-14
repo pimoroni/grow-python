@@ -4,16 +4,9 @@ import time
 import colorsys
 import sys
 import ST7735
-try:
-    # Transitional fix for breaking change in LTR559
-    from ltr559 import LTR559
-    ltr559 = LTR559()
-except ImportError:
-    import ltr559
 
-from bme280 import BME280
-from pms5003 import PMS5003, ReadTimeoutError as pmsReadTimeoutError
-from enviroplus import gas
+from grow import moisture
+from grow import pump
 from subprocess import PIPE, Popen
 from PIL import Image
 from PIL import ImageDraw
@@ -26,17 +19,11 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
 
-logging.info("""all-in-one.py - Displays readings from all of Enviro plus' sensors
+logging.info("""all-in-one.py - Displays readings from all of Grow HAT Mini's moisture sensors
 
 Press Ctrl+C to exit!
 
 """)
-
-# BME280 temperature/pressure/humidity sensor
-bme280 = BME280()
-
-# PMS5003 particulate sensor
-pms5003 = PMS5003()
 
 # Create ST7735 LCD display class
 st7735 = ST7735.ST7735(
@@ -111,16 +98,12 @@ last_page = 0
 light = 1
 
 # Create a values dict to store the data
-variables = ["temperature",
-             "pressure",
-             "humidity",
-             "light",
-             "oxidised",
-             "reduced",
-             "nh3",
-             "pm1",
-             "pm25",
-             "pm10"]
+variables = ["moisture1",
+             "moisture2",
+             "moisture3",
+             "pump1",
+             "pump2",
+             "pump3"]
 
 values = {}
 
@@ -130,101 +113,12 @@ for v in variables:
 # The main loop
 try:
     while True:
-        proximity = ltr559.get_proximity()
 
-        # If the proximity crosses the threshold, toggle the mode
-        if proximity > 1500 and time.time() - last_page > delay:
-            mode += 1
-            mode %= len(variables)
-            last_page = time.time()
+        data = moisture.read_all()
+        display_text(variables[mode], data, unit)
 
-        # One mode for each variable
-        if mode == 0:
-            # variable = "temperature"
-            unit = "C"
-            cpu_temp = get_cpu_temperature()
-            # Smooth out with some averaging to decrease jitter
-            cpu_temps = cpu_temps[1:] + [cpu_temp]
-            avg_cpu_temp = sum(cpu_temps) / float(len(cpu_temps))
-            raw_temp = bme280.get_temperature()
-            data = raw_temp - ((avg_cpu_temp - raw_temp) / factor)
-            display_text(variables[mode], data, unit)
-
-        if mode == 1:
-            # variable = "pressure"
-            unit = "hPa"
-            data = bme280.get_pressure()
-            display_text(variables[mode], data, unit)
-
-        if mode == 2:
-            # variable = "humidity"
-            unit = "%"
-            data = bme280.get_humidity()
-            display_text(variables[mode], data, unit)
-
-        if mode == 3:
-            # variable = "light"
-            unit = "Lux"
-            if proximity < 10:
-                data = ltr559.get_lux()
-            else:
-                data = 1
-            display_text(variables[mode], data, unit)
-
-        if mode == 4:
-            # variable = "oxidised"
-            unit = "kO"
-            data = gas.read_all()
-            data = data.oxidising / 1000
-            display_text(variables[mode], data, unit)
-
-        if mode == 5:
-            # variable = "reduced"
-            unit = "kO"
-            data = gas.read_all()
-            data = data.reducing / 1000
-            display_text(variables[mode], data, unit)
-
-        if mode == 6:
-            # variable = "nh3"
-            unit = "kO"
-            data = gas.read_all()
-            data = data.nh3 / 1000
-            display_text(variables[mode], data, unit)
-
-        if mode == 7:
-            # variable = "pm1"
-            unit = "ug/m3"
-            try:
-                data = pms5003.read()
-            except pmsReadTimeoutError:
-                logging.warn("Failed to read PMS5003")
-            else:
-                data = float(data.pm_ug_per_m3(1.0))
-                display_text(variables[mode], data, unit)
-
-        if mode == 8:
-            # variable = "pm25"
-            unit = "ug/m3"
-            try:
-                data = pms5003.read()
-            except pmsReadTimeoutError:
-                logging.warn("Failed to read PMS5003")
-            else:
-                data = float(data.pm_ug_per_m3(2.5))
-                display_text(variables[mode], data, unit)
-
-        if mode == 9:
-            # variable = "pm10"
-            unit = "ug/m3"
-            try:
-                data = pms5003.read()
-            except pmsReadTimeoutError:
-                logging.warn("Failed to read PMS5003")
-            else:
-                data = float(data.pm_ug_per_m3(10))
-                display_text(variables[mode], data, unit)
-
+        time.sleep(delay)
+        
 # Exit cleanly
 except KeyboardInterrupt:
     sys.exit(0)

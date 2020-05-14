@@ -1,66 +1,56 @@
-def test_gas_setup(GPIO, smbus):
-    from enviroplus import gas
-    gas._is_setup = False
-    gas.setup()
-    gas.setup()
+def test_moisture_setup(GPIO, smbus):
+    from grow import moisture
+    moisture._is_setup = False
+
+    moisture.setup()
+    moisture.setup()
 
 
-def test_gas_read_all(GPIO, smbus):
-    from enviroplus import gas
-    gas._is_setup = False
-    result = gas.read_all()
+def test_moisture_read_all(GPIO, smbus):
+    from grow import moisture
+    moisture._is_setup = False
+    
+    result = moisture.read_all()
 
-    assert type(result.oxidising) == float
-    assert int(result.oxidising) == 16641
+    assert type(result(1)) == float
+    assert int(result(1)) == 100
 
-    assert type(result.reducing) == float
-    assert int(result.reducing) == 16727
+    assert type(result(2)) == float
+    assert int(result(2)) == 500
 
-    assert type(result.nh3) == float
-    assert int(result.nh3) == 16813
+    assert type(result.(3)) == float
+    assert int(result.(3)) == 5000
 
-    assert "Oxidising" in str(result)
-
-
-def test_gas_read_each(GPIO, smbus):
-    from enviroplus import gas
-    gas._is_setup = False
-
-    assert int(gas.read_oxidising()) == 16641
-    assert int(gas.read_reducing()) == 16727
-    assert int(gas.read_nh3()) == 16813
+    assert "Moisture" in str(result)
 
 
-def test_gas_read_adc(GPIO, smbus):
-    from enviroplus import gas
-    gas._is_setup = False
+def test_moisture_read_each(GPIO, smbus):
+    from grow import moisture
+    moisture._is_setup = False
 
-    gas.enable_adc(True)
-    gas.set_adc_gain(2.048)
-    assert gas.read_adc() == 0.255
-
-
-def test_gas_read_adc_default_gain(GPIO, smbus):
-    from enviroplus import gas
-    gas._is_setup = False
-
-    gas.enable_adc(True)
-    gas.set_adc_gain(gas.MICS6814_GAIN)
-    assert gas.read_adc() == 0.765
+    assert int(moisture.read(1)) == 100
+    assert int(moisture.read(2)) == 500
+    assert int(moisture.read(3)) == 5000
 
 
-def test_gas_read_adc_str(GPIO, smbus):
-    from enviroplus import gas
-    gas._is_setup = False
+def test_moisture_cleanup(GPIO, smbus):
+    from grow import moisture
+    moisture.cleanup()
 
-    gas.enable_adc(True)
-    gas.set_adc_gain(2.048)
-    assert 'ADC' in str(gas.read_all())
+    GPIO.input.assert_called_with(moisture.MOISTURE_1_PIN, 0)
+    GPIO.input.assert_called_with(moisture.MOISTURE_2_PIN, 0)
+    GPIO.input.assert_called_with(moisture.MOISTURE_3_PIN, 0)
 
+def test_pump_setup(GPIO, smbus):
+    from grow import pump
+    moisture._is_setup = False
+    moisture.setup()
+    moisture.setup()
 
-def test_gas_cleanup(GPIO, smbus):
-    from enviroplus import gas
+def test_pump_cleanup(GPIO, smbus):
+    from grow import pump
+    pump.cleanup()
 
-    gas.cleanup()
-
-    GPIO.output.assert_called_with(gas.MICS6814_HEATER_PIN, 0)
+    GPIO.input.assert_called_with(moisture.PUMP_1_PIN, 0)
+    GPIO.input.assert_called_with(moisture.PUMP_2_PIN, 0)
+    GPIO.input.assert_called_with(moisture.PUMP_3_PIN, 0)

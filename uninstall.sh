@@ -22,12 +22,4 @@ fi
 
 cd ..
 
-printf "Disabling serial..\n"
-# Enable serial terminal over /dev/ttyAMA0
-raspi-config nonint do_serial 0
-# Disable serial port
-raspi-config nonint set_config_var enable_uart 0 /boot/config.txt
-# Switch serial port back to miniUART
-sed -i 's/^dtoverlay=pi3-miniuart-bt # for Enviro+/#dtoverlay=pi3-miniuart-bt # for Enviro+/' /boot/config.txt
-
 printf "Done!\n"
