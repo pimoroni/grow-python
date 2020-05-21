@@ -10,19 +10,19 @@ MOISTURE_INT_PIN = 4
 class Moisture(object):
     """Grow moisture sensor driver."""
 
-    def __init__(self, channel=0, wet_point=None, dry_point=None):
+    def __init__(self, channel=1, wet_point=None, dry_point=None):
         """Create a new moisture sensor.
 
         Uses an interrupt to count pulses on the GPIO pin corresponding to the selected channel.
 
         The moisture reading is given as pulses per second.
 
-        :param channel: One of 0, 1 or 2. 3 can optionally be used to set up a sensor on the Int pin (BCM4)
+        :param channel: One of 1, 2 or 3. 4 can optionally be used to set up a sensor on the Int pin (BCM4)
         :param wet_point: Wet point in pulses/sec
         :param dry_point: Dry point in pulses/sec
 
         """
-        self._gpio_pin = [MOISTURE_1_PIN, MOISTURE_2_PIN, MOISTURE_3_PIN, MOISTURE_INT_PIN][channel]
+        self._gpio_pin = [MOISTURE_1_PIN, MOISTURE_2_PIN, MOISTURE_3_PIN, MOISTURE_INT_PIN][channel - 1]
 
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
@@ -30,6 +30,7 @@ class Moisture(object):
 
         self._count = 0
         self._reading = 0
+        self._new_data = False
         self._wet_point = wet_point if wet_point is not None else 100
         self._dry_point = dry_point if dry_point is not None else 900
         self._time_start = time.time()

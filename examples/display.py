@@ -6,6 +6,9 @@ from PIL import Image, ImageDraw, ImageFont
 from fonts.ttf import RobotoMedium as UserFont
 import RPi.GPIO as GPIO
 
+from grow.moisture import Moisture
+from grow.pump import Pump
+
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
@@ -14,6 +17,18 @@ LABELS = ['A', 'B', 'X', 'Y']
 
 channel_count = 3
 channel_selected = 0
+
+sensors = [
+    Moisture(channel=1),
+    Moisture(channel=2),
+    Moisture(channel=3)
+]
+
+pumps = [
+    Pump(channel=1),
+    Pump(channel=2),
+    Pump(channel=3)
+]
 
 GPIO.setup(BUTTONS, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
@@ -37,7 +52,7 @@ display = ST7735.ST7735(
     dc=9,
     backlight=12,
     rotation=270,
-    spi_speed_hz=10000000
+    spi_speed_hz=80000000
 )
 
 ramp = [
@@ -58,6 +73,11 @@ ramp_sat = [
 def indicator_color(value, r=None):
     if r is None:
         r = ramp
+    if value == 1.0:
+        return r[-1]
+    if value == 0.0:
+        return r[0]
+
     value *= len(r) - 1
     a = int(math.floor(value))
     b = a + 1
@@ -116,9 +136,13 @@ picked = random.sample(plants, 3)
 
 while True:
     t = time.time() / 10.0
-    c1 = (math.sin(math.pi + t * math.pi) + 1.0) / 2.0
-    c2 = (math.sin(t * math.pi) + 1.0) / 2.0
-    c3 = (math.sin(math.pi + t * math.pi) + 1.0) / 2.0
+    #c1 = (math.sin(math.pi + t * math.pi) + 1.0) / 2.0
+    #c2 = (math.sin(t * math.pi) + 1.0) / 2.0
+    #c3 = (math.sin(math.pi + t * math.pi) + 1.0) / 2.0
+    c1 = 1.0 - sensors[0].saturation
+    c2 = 1.0 - sensors[1].saturation
+    c3 = 1.0 - sensors[2].saturation
+    print(c1, c2, c3)
 
     draw.rectangle((21, 0, 138, HEIGHT), (255, 255, 255))  # Erase channel area
 
@@ -156,4 +180,4 @@ while True:
     icon(image, icon_snooze, (0, HEIGHT - 20), (r, 129, 129))
 
     display.display(image.convert("RGB"))
-    time.sleep(1.0 / 30)
+    time.sleep(1.0 / 5)

@@ -7,12 +7,22 @@ PUMP_1_PIN = 17
 PUMP_2_PIN = 27
 PUMP_3_PIN = 22
 PUMP_PWM_FREQ = 10000
-PUMP_MAX_DUTY = 60
+PUMP_MAX_DUTY = 90
 
 
 class Pump(object):
-    def __init__(self, channel):
-        self._gpio_pin = [PUMP_1_PIN, PUMP_2_PIN, PUMP_3_PIN][channel]
+    """Grow pump driver."""
+
+    def __init__(self, channel=1):
+        """Create a new pump.
+
+        Uses soft PWM to drive a Grow pump.
+
+        :param channel: One of 1, 2 or 3.
+
+        """
+
+        self._gpio_pin = [PUMP_1_PIN, PUMP_2_PIN, PUMP_3_PIN][channel - 1]
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
@@ -37,7 +47,7 @@ class Pump(object):
         """Stop the pump."""
         self.set_speed(0)
 
-    def pulse(self, speed, timeout=0.1, blocking=True, force=False):
+    def dose(self, speed, timeout=0.1, blocking=True, force=False):
         """Pulse the pump for timeout seconds.
 
         :param timeout: Timeout, in seconds, of the pump pulse
