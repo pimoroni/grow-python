@@ -1,4 +1,7 @@
 import time
+import sys
+import pathlib
+import yaml
 import ST7735
 import random
 import math
@@ -10,52 +13,138 @@ import RPi.GPIO as GPIO
 from grow.moisture import Moisture
 from grow.pump import Pump
 
-# Level at which a watering event is triggered
-trigger_level = [
-    0.5,
-    0.5,
-    0.5
-]
 
-# Level at which the alarm is sounded (watering has failed?)
-alarm_level = [
-    0.2,
-    0.2,
-    0.2
-]
+class Channel:
+    bar_colours = [
+        (192, 225, 254),  # Blue
+        (196, 255, 209),  # Green
+        (255, 243, 192),  # Yellow
+        (254, 192, 192)   # Red
+    ]
 
-# Dose settings: Pump Speed, and Dose Time
-dose_settings = [
-    (0.7, 0.7),
-    (0.7, 0.7),
-    (0.7, 0.7)
-]
+    label_colours = [
+        (32, 137, 251),   # Blue
+        (100, 255, 124),  # Green
+        (254, 219, 82),   # Yellow
+        (254, 82, 82),    # Red
+    ]
 
-# Time the last watering was administered
-last_dose = [
-        time.time(),
-        time.time(),
-        time.time()
-]
+    def __init__(self, display_channel, sensor_channel, pump_channel, water_level=0.5, alarm_level=0.5, pump_speed=0.7, pump_time=0.7, watering_delay=30, icon=None):
+        self.channel = display_channel
+        self.sensor = Moisture(sensor_channel)
+        self.pump = Pump(pump_channel)
+        self.water_level = water_level
+        self.alarm_level = alarm_level
+        self.pump_speed = pump_speed
+        self.pump_time = pump_time
+        self.watering_delay = watering_delay
+        self.last_dose = time.time()
+        self.icon = icon
+        self.alarm = False
+
+    def indicator_color(self, value, r=None):
+        if r is None:
+            r = self.bar_colours
+        if value == 1.0:
+            return r[-1]
+        if value == 0.0:
+            return r[0]
+
+        value *= len(r) - 1
+        a = int(math.floor(value))
+        b = a + 1
+        blend = float(value - a)
+
+        r, g, b = [int(((r[b][i] - r[a][i]) * blend) + r[a][i]) for i in range(3)]
+
+        return (r, g, b)
+
+    def update_from_yml(self, config):
+        if config is not None:
+            print(config)
+            self.pump_speed = config.get("pump_speed", self.pump_speed)
+            self.pump_time = config.get("pump_time", self.pump_time)
+            self.alarm_level = config.get("alarm_level", self.alarm_level)
+            self.water_level = config.get("water_level", self.water_level)
+            self.watering_delay = config.get("watering_delay", self.watering_delay)
+            icon = config.get("icon", None)
+            if icon is not None:
+                self.icon = Image.open(icon)
+
+        pass
+
+    def water(self):
+        if time.time() - self.last_dose > self.watering_delay:
+            self.pump.dose(self.pump_speed, self.pump_time)
+            self.last_dose = time.time()
+            return True
+        return False
+
+    def render(self, image, font, selected=False):
+        draw = ImageDraw.Draw(image)
+        x = [21, 61, 101][self.channel - 1]
+
+        # Saturation amounts from each sensor
+        c = 1.0 - self.sensor.saturation
+        active = self.sensor.active
+
+        # Draw background bars
+        draw.rectangle((x, int(c * HEIGHT), x + 37, HEIGHT), self.indicator_color(c) if active else (229, 229, 229))
+
+        # Draw plant image
+        x -= 3
+        y = HEIGHT - self.icon.height
+        pl = self.icon
+        if not active:
+            pl = pl.convert("LA").convert("RGB")
+        image.paste(pl, (x, y), mask=self.icon)
+
+        # Channel selection icons
+        x += 15
+        draw.rectangle((x, 2, x + 15, 17), self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
+
+        if selected:
+            selected_x = x
+            draw.rectangle((selected_x, 0, selected_x + 19, 20), self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
+
+            # TODO: replace with graphic, since PIL has no anti-aliasing
+            draw.polygon([
+                (selected_x, 20),
+                (selected_x + 9, 25),
+                (selected_x + 19, 20)
+                ],
+                fill=self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
+
+        # TODO: replace number text with graphic
+        draw.text((x, 2), "{}".format(self.channel), font=font, fill=(255, 255, 255))
+
+    def update(self):
+        sat = self.sensor.saturation
+        if sat < self.water_level:
+            if self.water():
+                logging.info("Watering Channel: {} - rate {:.2f} for {:.2f}sec".format(self.channel, self.pump_speed, self.pump_time))
+            if sat < self.alarm_level and not self.alarm:
+                logging.warning("Alarm on Channel: {} - saturation is {:.2f} (warn level {:.2f}".format(self.channel, sat, self.alarm_level))
+                self.alarm = True
+
 
 BUTTONS = [5, 6, 16, 24]
 LABELS = ['A', 'B', 'X', 'Y']
-CHANNEL_COUNT = 3
-MINIMUM_WATERING_DELAY = 30  # Minimum time between waterings in seconds
 
 channel_selected = 0
 alarm = False
 
-sensors = [
-    Moisture(channel=1),
-    Moisture(channel=2),
-    Moisture(channel=3)
-]
+plants = []
 
-pumps = [
-    Pump(channel=1),
-    Pump(channel=2),
-    Pump(channel=3)
+# Load all of the plant icons
+for x in range(1, 15):
+    plants.append(Image.open("icons/flat-{}.png".format(x)))
+
+# Pick a random selection of plant icons to display on screen
+channels = [
+        Channel(1, 1, 1, icon=random.choice(plants)),
+        Channel(2, 2, 2, icon=random.choice(plants)),
+        Channel(3, 3, 3, icon=random.choice(plants))
 ]
 
 logging.basicConfig(
@@ -68,16 +157,21 @@ def handle_button(pin):
     global channel_selected, alarm
     index = BUTTONS.index(pin)
     label = LABELS[index]
+
     if label == 'A':  # Select Channel
         channel_selected += 1
-        channel_selected %= CHANNEL_COUNT
+        channel_selected %= len(channels)
+
     if label == 'B':  # Cancel Alarm
         alarm = False
+        for channel in channels:
+            channel.alarm = False
+
     if label == 'X':  # Set Wet Point
-        pass
+        channels[channel_selected].sensor.set_wet_point()
+
     if label == 'Y':  # Set Dry Point
-        pass
-    print("Button {} pressed! Channel: {}".format(label, channel_selected))
+        channels[channel_selected].sensor.set_dry_point()
 
 
 GPIO.setmode(GPIO.BCM)
@@ -88,35 +182,11 @@ for pin in BUTTONS:
     GPIO.add_event_detect(pin, GPIO.FALLING, handle_button, bouncetime=150)
 
 
-bar_colours = [
-    (192, 225, 254),  # Blue
-    (196, 255, 209),  # Green
-    (255, 243, 192),  # Yellow
-    (254, 192, 192)   # Red
-]
-
-label_colours = [
-    (32, 137, 251),   # Blue
-    (100, 255, 124),  # Green
-    (254, 219, 82),   # Yellow
-    (254, 82, 82),    # Red
-]
-
 # Only the ALPHA channel is used from these images
 icon_drop = Image.open("icons/icon-drop.png")
 icon_nodrop = Image.open("icons/icon-nodrop.png")
 icon_rightarrow = Image.open("icons/icon-rightarrow.png")
 icon_snooze = Image.open("icons/icon-snooze.png")
-
-plants = []
-
-# Load all of the plant icons
-for x in range(1, 15):
-    plants.append(Image.open("icons/flat-{}.png".format(x)))
-
-# Pick a random selection of plant icons to display on screen
-# TODO: Make this the default, but allow override in settings
-picked = random.sample(plants, 3)
 
 CHANNEL_W = 40
 CHANNEL_M = 2
@@ -139,54 +209,18 @@ font = ImageFont.truetype(UserFont, 14)
 draw = ImageDraw.Draw(image)
 
 
-def indicator_color(value, r=None):
-    if r is None:
-        r = bar_colours
-    if value == 1.0:
-        return r[-1]
-    if value == 0.0:
-        return r[0]
-
-    value *= len(r) - 1
-    a = int(math.floor(value))
-    b = a + 1
-    blend = float(value - a)
-
-    r, g, b = [int(((r[b][i] - r[a][i]) * blend) + r[a][i]) for i in range(3)]
-
-    return (r, g, b)
-
-
 def icon(image, icon, position, color):
     col = Image.new("RGBA", (20, 20), color=color)
     image.paste(col, position, mask=icon)
 
 
-def plant(image, plant, channel, available=True):
-    x = [18, 58, 98][channel]
-    y = HEIGHT - plant.height
-    mask = plant
-    if not available:
-        plant = plant.convert('LA').convert('RGB')
-    image.paste(plant, (x, y), mask=mask)
-
-
 def update():
     global alarm
 
-    t = time.time()
-
-    for channel in range(0, 3):
-        if sensors[channel].active:
-            sat = sensors[channel].saturation
-            if sat < trigger_level[channel]:
-                if t - last_dose[channel] > MINIMUM_WATERING_DELAY:
-                    dose_speed, dose_time = dose_settings[channel]
-                    pumps[channel].dose(dose_speed, dose_time)
-                    last_dose[channel] = t
-                    logging.info("Watering Channel: {} - rate {:.2f} for {:.2f}sec".format(channel + 1, dose_speed, dose_time))
-            if sat < alarm_level[channel]:
-                alarm = True
+    for channel in channels:
+        channel.update()
+        if channel.alarm:
+            alarm = True
 
 
 def render():
@@ -203,56 +237,29 @@ def render():
     icon(image, icon_drop, (WIDTH - 20, 0), (255, 255, 255))
     icon(image, icon_nodrop, (WIDTH - 20, HEIGHT - 20), (255, 255, 255))
 
+    draw.rectangle((21, 0, 138, HEIGHT), (255, 255, 255))  # Erase channel area
+
+    for channel in channels:
+        channel.render(image, font, channel_selected==channel.channel - 1)
+
     # Draw the snooze icon- will be pulsing red if the alarm state is True
     r = 129
     if alarm:
         r = int(((math.sin(t * 3 * math.pi) + 1.0) / 2.0) * 255)
     icon(image, icon_snooze, (0, HEIGHT - 20), (r, 129, 129))
 
-    # Saturation amounts from each sensor
-    c1 = 1.0 - sensors[0].saturation
-    c2 = 1.0 - sensors[1].saturation
-    c3 = 1.0 - sensors[2].saturation
-
-    # Channel presence detection
-    ca1 = sensors[0].active
-    ca2 = sensors[1].active
-    ca3 = sensors[2].active
-
-    draw.rectangle((21, 0, 138, HEIGHT), (255, 255, 255))  # Erase channel area
-
-    # Draw background bars
-    draw.rectangle((21, int(c1 * HEIGHT), 58, HEIGHT), indicator_color(c1) if ca1 else (229, 229, 229))
-    draw.rectangle((61, int(c2 * HEIGHT), 98, HEIGHT), indicator_color(c2) if ca2 else (229, 229, 229))
-    draw.rectangle((101, int(c3 * HEIGHT), 138, HEIGHT), indicator_color(c3) if ca3 else (229, 229, 229))
-
-    # Draw plant images
-    for p in range(3):
-        plant(image, picked[p], p, [ca1, ca2, ca3][p])
-
-    # Channel selection icons
-    draw.rectangle((33, 2, 48, 17), indicator_color(c1, label_colours) if ca1 else (129, 129, 129))
-    draw.rectangle((33 + 40, 2, 48 + 40, 17), indicator_color(c2, label_colours) if ca2 else (129, 129, 129))
-    draw.rectangle((33 + 80, 2, 48 + 80, 17), indicator_color(c3, label_colours) if ca3 else (129, 129, 129))
-
-    selected_x = 21 + (40 * channel_selected) + 10
-    draw.rectangle((selected_x, 0, selected_x + 19, 20), indicator_color([c1, c2, c3][channel_selected], label_colours) if [ca1, ca2, ca3][channel_selected] else (129, 129, 129))
-
-    # TODO: replace with graphic, since PIL has no anti-aliasing
-    draw.polygon([
-        (selected_x, 20),
-        (selected_x + 9, 25),
-        (selected_x + 19, 20)
-        ],
-        fill=indicator_color([c1, c2, c3][channel_selected], label_colours) if [ca1, ca2, ca3][channel_selected] else (129, 129, 129))
-
-    # TODO: replace number text with graphic
-    draw.text((33 + 3, 2), "1", font=font, fill=(255, 255, 255))
-    draw.text((33 + 40 + 4, 2), "2", font=font, fill=(255, 255, 255))
-    draw.text((33 + 80 + 4, 2), "3", font=font, fill=(255, 255, 255))
-
 
 def main():
+    settings_file = "water.yml"
+    if len(sys.argv) > 1:
+        settings_file = sys.argv[1]
+    settings_file = pathlib.Path(settings_file)
+    if settings_file.is_file():
+        config = yaml.safe_load(open(settings_file))
+        for channel in channels:
+            ch = config.get("channel{}".format(channel.channel), None)
+            channel.update_from_yml(ch)
+
     while True:
         update()
         render()
