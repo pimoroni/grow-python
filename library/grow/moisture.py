@@ -33,20 +33,25 @@ class Moisture(object):
         self._new_data = False
         self._wet_point = wet_point if wet_point is not None else 100
         self._dry_point = dry_point if dry_point is not None else 900
-        self._time_start = time.time()
+        self._time_last_reading = time.time()
         GPIO.add_event_detect(self._gpio_pin, GPIO.RISING, callback=self._event_handler, bouncetime=1)
+
+        self._time_start = time.time()
+        self._total_count = 0
+        self._minimum_hz = 50
 
     def _event_handler(self, pin):
         self._count += 1
+        self._total_count += 1
         if self._time_elapsed >= 1.0:
             self._reading = self._count / self._time_elapsed
             self._count = 0
-            self._time_start = time.time()
+            self._time_last_reading = time.time()
             self._new_data = True
 
     @property
     def _time_elapsed(self):
-        return time.time() - self._time_start
+        return time.time() - self._time_last_reading
 
     def set_wet_point(self, value=None):
         """Set the sensor wet point.
@@ -87,6 +92,12 @@ class Moisture(object):
         """
         self._new_data = False
         return self._reading
+
+    @property
+    def active(self):
+        """Check if the moisture sensor is producing a valid reading."""
+        elapsed = time.time() - self._time_start
+        return (self._total_count / elapsed) > self._minimum_hz
 
     @property
     def new_data(self):
