@@ -31,9 +31,17 @@ dose_settings = [
     (0.7, 0.7)
 ]
 
+# Time the last watering was administered
+last_dose = [
+        time.time(),
+        time.time(),
+        time.time()
+]
+
 BUTTONS = [5, 6, 16, 24]
 LABELS = ['A', 'B', 'X', 'Y']
 CHANNEL_COUNT = 3
+MINIMUM_WATERING_DELAY = 30  # Minimum time between waterings in seconds
 
 channel_selected = 0
 alarm = False
@@ -164,7 +172,21 @@ def plant(image, plant, channel, available=True):
 
 
 def update():
-    pass
+    global alarm
+
+    t = time.time()
+
+    for channel in range(0, 3):
+        if sensors[channel].active:
+            sat = sensors[channel].saturation
+            if sat < trigger_level[channel]:
+                if t - last_dose[channel] > MINIMUM_WATERING_DELAY:
+                    dose_speed, dose_time = dose_settings[channel]
+                    pumps[channel].dose(dose_speed, dose_time)
+                    last_dose[channel] = t
+                    logging.info("Watering Channel: {} - rate {:.2f} for {:.2f}sec".format(channel + 1, dose_speed, dose_time))
+            if sat < alarm_level[channel]:
+                alarm = True
 
 
 def render():
@@ -193,10 +215,9 @@ def render():
     c3 = 1.0 - sensors[2].saturation
 
     # Channel presence detection
-    # TODO: Implement presence detection that doesn't trigger on random noise!
-    ca1 = sensors[0].moisture > 0
-    ca2 = sensors[1].moisture > 0
-    ca3 = sensors[2].moisture > 0
+    ca1 = sensors[0].active
+    ca2 = sensors[1].active
+    ca3 = sensors[2].active
 
     draw.rectangle((21, 0, 138, HEIGHT), (255, 255, 255))  # Erase channel area
 
