@@ -32,6 +32,12 @@ class Pump(object):
 
         self._timeout = None
 
+        atexit.register(self._stop)
+
+    def _stop(self):
+        self._pwm.stop(0)
+        GPIO.setup(self._gpio_pin, GPIO.IN)
+
     def set_speed(self, speed):
         """Set pump speed (PWM duty cycle)."""
         if speed > 1.0 or speed < 0:
