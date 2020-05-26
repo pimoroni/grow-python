@@ -9,6 +9,21 @@ import ST7735
 from grow.moisture import Moisture
 from grow.pump import Pump
 
+
+"""
+Auto water a single target with the channel/pump selected below.
+
+This example is useful for calibrating watering settings and will give you a good idea
+what speed/time you need to run your pump for in order to deliver a thorough watering.
+
+The buttons allow you to find tune and test the pump settings.
+
+A = Test settings
+B = Select setting to change
+X = Decrease value
+Y = Increase value
+"""
+
 # Channel settings
 pump_channel = 3
 moisture_channel = 3
