@@ -1,0 +1,16 @@
+channel1:
+        water_level: 0.8
+        warn_level: 0.2
+        pump_speed: 0.7
+        pump_time: 0.7
+        icon: icons/flat-4.png
+channel2:
+        water_level: 0.8
+        warn_level: 0.2
+        pump_speed: 0.7
+        pump_time: 0.7
+channel3:
+        water_level: 0.8
+        warn_level: 0.2
+        pump_speed: 0.7
+        pump_time: 0.7
