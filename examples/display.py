@@ -61,7 +61,6 @@ class Channel:
 
     def update_from_yml(self, config):
         if config is not None:
-            print(config)
             self.pump_speed = config.get("pump_speed", self.pump_speed)
             self.pump_time = config.get("pump_time", self.pump_time)
             self.alarm_level = config.get("alarm_level", self.alarm_level)
@@ -72,6 +71,15 @@ class Channel:
                 self.icon = Image.open(icon)
 
         pass
+
+    def __str__(self):
+        return """Channel: {channel}
+Water level: {water_level}
+Alarm level: {alarm_level}
+Pump speed: {pump_speed}
+Pump time: {pump_time}
+Delay: {watering_delay}
+""".format(**self.__dict__)
 
     def water(self):
         if time.time() - self.last_dose > self.watering_delay:
@@ -104,7 +112,7 @@ class Channel:
         draw.rectangle((x, 2, x + 15, 17), self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
 
         if selected:
-            selected_x = x
+            selected_x = x - 2
             draw.rectangle((selected_x, 0, selected_x + 19, 20), self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
 
             # TODO: replace with graphic, since PIL has no anti-aliasing
@@ -116,7 +124,9 @@ class Channel:
                 fill=self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
 
         # TODO: replace number text with graphic
-        draw.text((x, 2), "{}".format(self.channel), font=font, fill=(255, 255, 255))
+
+        tw, th = font.getsize("{}".format(self.channel))
+        draw.text((x + int(math.ceil(8 - (tw / 2.0))), 2), "{}".format(self.channel), font=font, fill=(255, 255, 255))
 
     def update(self):
         sat = self.sensor.saturation
@@ -255,10 +265,18 @@ def main():
         settings_file = sys.argv[1]
     settings_file = pathlib.Path(settings_file)
     if settings_file.is_file():
-        config = yaml.safe_load(open(settings_file))
+        try:
+            config = yaml.safe_load(open(settings_file))
+        except yaml.parser.ParserError as e:
+            raise yaml.parser.ParserError("Error parsing settings file: {} ({})".format(settings_file, e))
+
         for channel in channels:
             ch = config.get("channel{}".format(channel.channel), None)
             channel.update_from_yml(ch)
+
+    print("Channels:")
+    for channel in channels:
+        print(channel)
 
     while True:
         update()
