@@ -58,6 +58,7 @@ class Pump(object):
 
         :param timeout: Timeout, in seconds, of the pump pulse
         :param blocking: If true, function will block until pump has stopped
+        :param force: Applies only to non-blocking. If true, any previous dose will be replaced
 
         """
         if blocking:
