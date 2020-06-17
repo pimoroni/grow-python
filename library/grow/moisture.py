@@ -31,14 +31,14 @@ class Moisture(object):
         self._count = 0
         self._reading = 0
         self._new_data = False
-        self._wet_point = wet_point if wet_point is not None else 100
-        self._dry_point = dry_point if dry_point is not None else 900
+        self._wet_point = wet_point if wet_point is not None else 0.7
+        self._dry_point = dry_point if dry_point is not None else 27.6
         self._time_last_reading = time.time()
         GPIO.add_event_detect(self._gpio_pin, GPIO.RISING, callback=self._event_handler, bouncetime=1)
 
         self._time_start = time.time()
         self._total_count = 0
-        self._minimum_hz = 50
+        self._minimum_hz = 5
 
     def _event_handler(self, pin):
         self._count += 1
