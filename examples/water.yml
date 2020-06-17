@@ -14,3 +14,6 @@ channel3:
         warn_level: 0.2
         pump_speed: 0.7
         pump_time: 0.7
+general:
+        alarm_enable: True
+        alarm_interval: 1.0

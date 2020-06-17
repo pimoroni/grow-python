@@ -12,6 +12,7 @@ import RPi.GPIO as GPIO
 
 from grow.moisture import Moisture
 from grow.pump import Pump
+from grow import Piezo
 
 
 class Channel:
@@ -83,7 +84,7 @@ Delay: {watering_delay}
 
     def water(self):
         if time.time() - self.last_dose > self.watering_delay:
-            self.pump.dose(self.pump_speed, self.pump_time)
+            self.pump.dose(self.pump_speed, self.pump_time, blocking=False)
             self.last_dose = time.time()
             return True
         return False
@@ -260,6 +261,11 @@ def render():
 
 
 def main():
+    alarm_enable = True
+    alarm_interval = 1.0
+    piezo = Piezo()
+    time_last_beep = time.time()
+
     settings_file = "water.yml"
     if len(sys.argv) > 1:
         settings_file = sys.argv[1]
@@ -274,17 +280,34 @@ def main():
             ch = config.get("channel{}".format(channel.channel), None)
             channel.update_from_yml(ch)
 
+        settings = config.get("general", None)
+        if settings is not None:
+            alarm_enable = settings.get("alarm_enable", alarm_enable)
+            alarm_interval = settings.get("alarm_interval", alarm_interval)
+
     print("Channels:")
     for channel in channels:
         print(channel)
+
+    print("""Settings:
+Alarm Enabled: {}
+Alarm Interval: {:.2f}s
+""".format(
+    alarm_enable,
+    alarm_interval
+))
 
     while True:
         update()
         render()
         display.display(image.convert("RGB"))
 
+        if alarm_enable and alarm and time.time() - time_last_beep > alarm_interval:
+            piezo.beep(440, 1.0 / 10, blocking=False)
+            time_last_beep = time.time()
+
         # 5 FPS
-        time.sleep(1.0 / 5)
+        time.sleep(1.0 / 10)
 
 
 if __name__ == "__main__":
