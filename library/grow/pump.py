@@ -52,6 +52,9 @@ class Pump(object):
     def stop(self):
         """Stop the pump."""
         self.set_speed(0)
+        if self._timeout is not None:
+            self._timeout.cancel()
+            self._timeout = None
 
     def dose(self, speed, timeout=0.1, blocking=True, force=False):
         """Pulse the pump for timeout seconds.
