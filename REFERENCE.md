@@ -3,7 +3,7 @@
 Grow 
 
 - [Getting Started](#getting-started)
-  - [Pre-requisites](#pre-requisites)
+  - [Requirements](#requirements)
     - [Python 3 & pip](#python-3--pip)
     - [Enabling i2c and spi](#enabling-i2c-and-spi)
   - [Installing the library](#installing-the-library)
@@ -30,7 +30,7 @@ Grow
 
 You'll need to install the LTP305 software library and enable i2c on your Raspberry Pi.
 
-### Pre-requisites
+### Requirements
 
 #### Python 3 & pip
 
@@ -68,7 +68,9 @@ The moisture module is responsible for reading the moisture sensor.
 
 Grow moisture sensors output pulses that correspond to the moisture content of the soil.
 
-Wet soil will produce low frequency pulses, which will gradually become more frequent as the soil dries. (TODO: document exact range)
+Wet soil will produce low frequency pulses, which will gradually become more frequent as the soil dries.
+
+The range runs from about 27-28 pulses per second in air, to <=1 pulse per second in fully saturated soil.
 
 To set up a moisture sensor you must import and initialise the class with the channel number you want to monitor:
 
@@ -169,12 +171,12 @@ while True:
 ##### active
 
 ```python
-moisture1.new_data()
+moisture1.active()
 ```
 
 Returns `True` if the moisture sensor is connected and returning valid readings. Currently not very reliable or responsive.
 
-TODO: Find ways to make this better
+TODO: Find ways to make this better.
 
 ### Pump
 
@@ -236,7 +238,7 @@ Returns the current pump speed.
 pump1.stop()
 ```
 
-Stops the pump by setting the speed to 0. Does not interrupt a non-blocking `dose`. TODO: It probably should
+Stops the pump by setting the speed to 0.
 
 ### Light Sensor
 
