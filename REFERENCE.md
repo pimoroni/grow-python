@@ -104,8 +104,8 @@ moisture1.set_wet_point()
 Or you could have variables that you wish to set as your wet/dry points:
 
 ```python
-DRY_POINT = 1000
-WET_POINT = 100
+DRY_POINT = 27
+WET_POINT = 1
 moisture1.set_dry_point(DRY_POINT)
 moisture1.set_wet_point(WET_POINT)
 ```
