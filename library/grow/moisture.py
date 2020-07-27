@@ -34,7 +34,19 @@ class Moisture(object):
         self._wet_point = wet_point if wet_point is not None else 0.7
         self._dry_point = dry_point if dry_point is not None else 27.6
         self._time_last_reading = time.time()
-        GPIO.add_event_detect(self._gpio_pin, GPIO.RISING, callback=self._event_handler, bouncetime=1)
+        try:
+            GPIO.add_event_detect(self._gpio_pin, GPIO.RISING, callback=self._event_handler, bouncetime=1)
+        except RuntimeError as e:
+            if self._gpio_pin == 8:
+                raise RuntimeError("""Unable to set up edge detection on BCM8.
+                
+Please ensure you add the following to /boot/config.txt and reboot:
+
+dtoverlay=spi0-cs,cs0_pin=14 # Re-assign CS0 from BCM 8 so that Grow can use it
+
+""")
+            else:
+                raise e
 
         self._time_start = time.time()
         self._total_count = 0
