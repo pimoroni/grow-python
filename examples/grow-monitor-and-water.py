@@ -30,12 +30,13 @@ class Channel:
         (254, 82, 82),    # Red
     ]
 
-    def __init__(self, display_channel, sensor_channel, pump_channel, water_level=0.5, alarm_level=0.5, pump_speed=0.7, pump_time=0.7, watering_delay=30, icon=None):
+    def __init__(self, display_channel, sensor_channel, pump_channel, water_level=0.5, alarm_level=0.5, pump_speed=0.7, pump_time=0.7, watering_delay=30, icon=None, auto_water=False):
         self.channel = display_channel
         self.sensor = Moisture(sensor_channel)
         self.pump = Pump(pump_channel)
         self.water_level = water_level
         self.alarm_level = alarm_level
+        self.auto_water = auto_water
         self.pump_speed = pump_speed
         self.pump_time = pump_time
         self.watering_delay = watering_delay
@@ -67,6 +68,7 @@ class Channel:
             self.alarm_level = config.get("alarm_level", self.alarm_level)
             self.water_level = config.get("water_level", self.water_level)
             self.watering_delay = config.get("watering_delay", self.watering_delay)
+            self.auto_water = config.get("auto_water", self.auto_water)
             icon = config.get("icon", None)
             if icon is not None:
                 self.icon = Image.open(icon)
@@ -77,12 +79,15 @@ class Channel:
         return """Channel: {channel}
 Water level: {water_level}
 Alarm level: {alarm_level}
+Auto water: {auto_water}
 Pump speed: {pump_speed}
 Pump time: {pump_time}
 Delay: {watering_delay}
 """.format(**self.__dict__)
 
     def water(self):
+        if not self.auto_water:
+            return False
         if time.time() - self.last_dose > self.watering_delay:
             self.pump.dose(self.pump_speed, self.pump_time, blocking=False)
             self.last_dose = time.time()
@@ -135,7 +140,7 @@ Delay: {watering_delay}
             if self.water():
                 logging.info("Watering Channel: {} - rate {:.2f} for {:.2f}sec".format(self.channel, self.pump_speed, self.pump_time))
             if sat < self.alarm_level and not self.alarm:
-                logging.warning("Alarm on Channel: {} - saturation is {:.2f} (warn level {:.2f}".format(self.channel, sat, self.alarm_level))
+                logging.warning("Alarm on Channel: {} - saturation is {:.2f} (warn level {:.2f})".format(self.channel, sat, self.alarm_level))
                 self.alarm = True
 
 
