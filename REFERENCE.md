@@ -122,7 +122,7 @@ Reads the raw moisture level of the sensor.
 
 This is expressed in pulses-per-second and is inversely proportional to the moisture content of the soil.
 
-(TODO: document exact range)
+The moisture sensors are deliberately scaled to a very low frequency and range from around 27-28Hz in dry air down to around 1Hz in saturated soil.
 
 ##### saturation
 
@@ -174,9 +174,9 @@ while True:
 moisture1.active()
 ```
 
-Returns `True` if the moisture sensor is connected and returning valid readings. Currently not very reliable or responsive.
+Returns `True` if the moisture sensor is connected and returning valid readings. 
 
-TODO: Find ways to make this better.
+Checks if a pulse has happened within the last second, and that the reading is within a sensible range.
 
 ### Pump
 
