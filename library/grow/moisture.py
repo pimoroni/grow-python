@@ -30,6 +30,7 @@ class Moisture(object):
 
         self._count = 0
         self._reading = 0
+        self._last_pulse = time.time()
         self._new_data = False
         self._wet_point = wet_point if wet_point is not None else 0.7
         self._dry_point = dry_point if dry_point is not None else 27.6
@@ -39,7 +40,7 @@ class Moisture(object):
         except RuntimeError as e:
             if self._gpio_pin == 8:
                 raise RuntimeError("""Unable to set up edge detection on BCM8.
-                
+
 Please ensure you add the following to /boot/config.txt and reboot:
 
 dtoverlay=spi0-cs,cs0_pin=14 # Re-assign CS0 from BCM 8 so that Grow can use it
@@ -49,12 +50,10 @@ dtoverlay=spi0-cs,cs0_pin=14 # Re-assign CS0 from BCM 8 so that Grow can use it
                 raise e
 
         self._time_start = time.time()
-        self._total_count = 0
-        self._minimum_hz = 5
 
     def _event_handler(self, pin):
         self._count += 1
-        self._total_count += 1
+        self._last_pulse = time.time()
         if self._time_elapsed >= 1.0:
             self._reading = self._count / self._time_elapsed
             self._count = 0
@@ -108,8 +107,7 @@ dtoverlay=spi0-cs,cs0_pin=14 # Re-assign CS0 from BCM 8 so that Grow can use it
     @property
     def active(self):
         """Check if the moisture sensor is producing a valid reading."""
-        elapsed = time.time() - self._time_start
-        return (self._total_count / elapsed) > self._minimum_hz
+        return (time.time() - self._last_pulse) < 1.0 and self._reading > 0 and self._reading < 28
 
     @property
     def new_data(self):
