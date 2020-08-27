@@ -37,6 +37,8 @@ channel1:
         warn_level: 0.2
         pump_speed: 0.7
         pump_time: 0.7
+        wet_point: 0.7
+        dry_point: 27.6
         auto_water: False
         icon: icons/flat-4.png
 channel2:
@@ -44,12 +46,16 @@ channel2:
         warn_level: 0.2
         pump_speed: 0.7
         pump_time: 0.7
+        wet_point: 0.7
+        dry_point: 27.6
         auto_water: False
 channel3:
         water_level: 0.8
         warn_level: 0.2
         pump_speed: 0.7
         pump_time: 0.7
+        wet_point: 0.7
+        dry_point: 27.6
         auto_water: False
 general:
         alarm_enable: True
@@ -65,6 +71,8 @@ Grow has three channels which are separated into the sections `channel1`, `chann
 * `pump_speed` - The speed at which the pump should be run (from 0.0 low speed to 1.0 full speed)
 * `pump_time` - The time that the pump should run for (in seconds)
 * `auto_water` - Whether to run the attached pump (True to auto-water, False for manual watering)
+* `wet_point` - Value for the sensor in saturated soil (in Hz)
+* `dry_point` - Value for the sensor in totally dry soil (in Hz)
 * `icon` - Optional icon image for the channel, see the icons directory for images.
 
 ## General Settings

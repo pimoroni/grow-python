@@ -40,6 +40,8 @@ class Channel:
         pump_speed=0.7,
         pump_time=0.7,
         watering_delay=30,
+        wet_point=0.7,
+        dry_point=26.7,
         icon=None,
         auto_water=False,
     ):
@@ -52,9 +54,14 @@ class Channel:
         self.pump_speed = pump_speed
         self.pump_time = pump_time
         self.watering_delay = watering_delay
+        self.wet_point = wet_point
+        self.dry_point = dry_point
         self.last_dose = time.time()
         self.icon = icon
         self.alarm = False
+
+        self.sensor.set_wet_point(wet_point)
+        self.sensor.set_dry_point(dry_point)
 
     def indicator_color(self, value, r=None):
         if r is None:
@@ -95,6 +102,8 @@ Water level: {water_level}
 Pump speed: {pump_speed}
 Pump time: {pump_time}
 Delay: {watering_delay}
+Wet point: {wet_point}
+Dry point: {dry_point}
 """.format(
             **self.__dict__
         )
