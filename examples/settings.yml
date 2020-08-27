@@ -13,4 +13,4 @@ channel3:
         dry_point: 27.6
 general:
         alarm_enable: True
-        alarm_interval: 1.0
+        alarm_interval: 10.0

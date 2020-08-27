@@ -5,6 +5,7 @@ import pathlib
 import random
 import sys
 import time
+import threading
 
 import RPi.GPIO as GPIO
 import ST7735
@@ -312,7 +313,7 @@ def render():
 
 def main():
     alarm_enable = True
-    alarm_interval = 1.0
+    alarm_interval = 10.0
     piezo = Piezo()
     time_last_beep = time.time()
 
@@ -356,7 +357,9 @@ Alarm Interval: {:.2f}s
         display.display(image.convert("RGB"))
 
         if alarm_enable and alarm and time.time() - time_last_beep > alarm_interval:
-            piezo.beep(440, 1.0 / 10, blocking=False)
+            piezo.beep(440, 0.1, blocking=False)
+            threading.Timer(0.3, piezo.beep, args=[440, 0.1], kwargs={"blocking":False}).start()
+            threading.Timer(0.6, piezo.beep, args=[440, 0.1], kwargs={"blocking":False}).start()
             time_last_beep = time.time()
 
         # 5 FPS
