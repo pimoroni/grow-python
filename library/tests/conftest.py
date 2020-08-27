@@ -70,12 +70,3 @@ def atexit():
     sys.modules['atexit'] = atexit
     yield atexit
     del sys.modules['atexit']
-
-
-@pytest.fixture(scope='function', autouse=False)
-def numpy():
-    """Mock numpy module."""
-    numpy = mock.MagicMock()
-    sys.modules['numpy'] = numpy
-    yield numpy
-    del sys.modules['numpy']

@@ -6,24 +6,22 @@ from fonts.ttf import RobotoMedium as UserFont
 import logging
 
 logging.basicConfig(
-    format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+    format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
     level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
-logging.info("""lcd.py - Hello, World! example on the 0.96" LCD.
+logging.info(
+    """lcd.py - Hello, World! example on the 0.96" LCD.
 
 Press Ctrl+C to exit!
 
-""")
+"""
+)
 
 # Create LCD class instance.
 disp = ST7735.ST7735(
-    port=0,
-    cs=1,
-    dc=9,
-    backlight=12,
-    rotation=270,
-    spi_speed_hz=10000000
+    port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=10000000
 )
 
 # Initialize display.
@@ -34,7 +32,7 @@ WIDTH = disp.width
 HEIGHT = disp.height
 
 # New canvas to draw on.
-img = Image.new('RGB', (WIDTH, HEIGHT), color=(0, 0, 0))
+img = Image.new("RGB", (WIDTH, HEIGHT), color=(0, 0, 0))
 draw = ImageDraw.Draw(img)
 
 # Text settings.

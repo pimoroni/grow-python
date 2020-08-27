@@ -20,17 +20,29 @@ class Channel:
         (192, 225, 254),  # Blue
         (196, 255, 209),  # Green
         (255, 243, 192),  # Yellow
-        (254, 192, 192)   # Red
+        (254, 192, 192),  # Red
     ]
 
     label_colours = [
-        (32, 137, 251),   # Blue
+        (32, 137, 251),  # Blue
         (100, 255, 124),  # Green
-        (254, 219, 82),   # Yellow
-        (254, 82, 82),    # Red
+        (254, 219, 82),  # Yellow
+        (254, 82, 82),  # Red
     ]
 
-    def __init__(self, display_channel, sensor_channel, pump_channel, water_level=0.5, alarm_level=0.5, pump_speed=0.7, pump_time=0.7, watering_delay=30, icon=None, auto_water=False):
+    def __init__(
+        self,
+        display_channel,
+        sensor_channel,
+        pump_channel,
+        water_level=0.5,
+        alarm_level=0.5,
+        pump_speed=0.7,
+        pump_time=0.7,
+        watering_delay=30,
+        icon=None,
+        auto_water=False,
+    ):
         self.channel = display_channel
         self.sensor = Moisture(sensor_channel)
         self.pump = Pump(pump_channel)
@@ -77,13 +89,15 @@ class Channel:
 
     def __str__(self):
         return """Channel: {channel}
-Water level: {water_level}
 Alarm level: {alarm_level}
 Auto water: {auto_water}
+Water level: {water_level}
 Pump speed: {pump_speed}
 Pump time: {pump_time}
 Delay: {watering_delay}
-""".format(**self.__dict__)
+""".format(
+            **self.__dict__
+        )
 
     def water(self):
         if not self.auto_water:
@@ -103,7 +117,10 @@ Delay: {watering_delay}
         active = self.sensor.active
 
         # Draw background bars
-        draw.rectangle((x, int(c * HEIGHT), x + 37, HEIGHT), self.indicator_color(c) if active else (229, 229, 229))
+        draw.rectangle(
+            (x, int(c * HEIGHT), x + 37, HEIGHT),
+            self.indicator_color(c) if active else (229, 229, 229),
+        )
 
         # Draw plant image
         x -= 3
@@ -115,37 +132,58 @@ Delay: {watering_delay}
 
         # Channel selection icons
         x += 15
-        draw.rectangle((x, 2, x + 15, 17), self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
+        draw.rectangle(
+            (x, 2, x + 15, 17),
+            self.indicator_color(c, self.label_colours) if active else (129, 129, 129),
+        )
 
         if selected:
             selected_x = x - 2
-            draw.rectangle((selected_x, 0, selected_x + 19, 20), self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
+            draw.rectangle(
+                (selected_x, 0, selected_x + 19, 20),
+                self.indicator_color(c, self.label_colours)
+                if active
+                else (129, 129, 129),
+            )
 
             # TODO: replace with graphic, since PIL has no anti-aliasing
-            draw.polygon([
-                (selected_x, 20),
-                (selected_x + 9, 25),
-                (selected_x + 19, 20)
-                ],
-                fill=self.indicator_color(c, self.label_colours) if active else (129, 129, 129))
+            draw.polygon(
+                [(selected_x, 20), (selected_x + 9, 25), (selected_x + 19, 20)],
+                fill=self.indicator_color(c, self.label_colours)
+                if active
+                else (129, 129, 129),
+            )
 
         # TODO: replace number text with graphic
 
         tw, th = font.getsize("{}".format(self.channel))
-        draw.text((x + int(math.ceil(8 - (tw / 2.0))), 2), "{}".format(self.channel), font=font, fill=(255, 255, 255))
+        draw.text(
+            (x + int(math.ceil(8 - (tw / 2.0))), 2),
+            "{}".format(self.channel),
+            font=font,
+            fill=(255, 255, 255),
+        )
 
     def update(self):
         sat = self.sensor.saturation
         if sat < self.water_level:
             if self.water():
-                logging.info("Watering Channel: {} - rate {:.2f} for {:.2f}sec".format(self.channel, self.pump_speed, self.pump_time))
+                logging.info(
+                    "Watering Channel: {} - rate {:.2f} for {:.2f}sec".format(
+                        self.channel, self.pump_speed, self.pump_time
+                    )
+                )
             if sat < self.alarm_level and not self.alarm:
-                logging.warning("Alarm on Channel: {} - saturation is {:.2f} (warn level {:.2f})".format(self.channel, sat, self.alarm_level))
+                logging.warning(
+                    "Alarm on Channel: {} - saturation is {:.2f} (warn level {:.2f})".format(
+                        self.channel, sat, self.alarm_level
+                    )
+                )
                 self.alarm = True
 
 
 BUTTONS = [5, 6, 16, 24]
-LABELS = ['A', 'B', 'X', 'Y']
+LABELS = ["A", "B", "X", "Y"]
 
 channel_selected = 0
 alarm = False
@@ -158,15 +196,16 @@ for x in range(1, 15):
 
 # Pick a random selection of plant icons to display on screen
 channels = [
-        Channel(1, 1, 1, icon=random.choice(plants)),
-        Channel(2, 2, 2, icon=random.choice(plants)),
-        Channel(3, 3, 3, icon=random.choice(plants))
+    Channel(1, 1, 1, icon=random.choice(plants)),
+    Channel(2, 2, 2, icon=random.choice(plants)),
+    Channel(3, 3, 3, icon=random.choice(plants)),
 ]
 
 logging.basicConfig(
-    format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+    format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
     level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def handle_button(pin):
@@ -174,19 +213,19 @@ def handle_button(pin):
     index = BUTTONS.index(pin)
     label = LABELS[index]
 
-    if label == 'A':  # Select Channel
+    if label == "A":  # Select Channel
         channel_selected += 1
         channel_selected %= len(channels)
 
-    if label == 'B':  # Cancel Alarm
+    if label == "B":  # Cancel Alarm
         alarm = False
         for channel in channels:
             channel.alarm = False
 
-    if label == 'X':  # Set Wet Point
+    if label == "X":  # Set Wet Point
         channels[channel_selected].sensor.set_wet_point()
 
-    if label == 'Y':  # Set Dry Point
+    if label == "Y":  # Set Dry Point
         channels[channel_selected].sensor.set_dry_point()
 
 
@@ -209,12 +248,7 @@ CHANNEL_M = 2
 
 # Set up the ST7735 SPI Display
 display = ST7735.ST7735(
-    port=0,
-    cs=1,
-    dc=9,
-    backlight=12,
-    rotation=270,
-    spi_speed_hz=80000000
+    port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=80000000
 )
 display.begin()
 WIDTH, HEIGHT = display.width, display.height
@@ -256,7 +290,7 @@ def render():
     draw.rectangle((21, 0, 138, HEIGHT), (255, 255, 255))  # Erase channel area
 
     for channel in channels:
-        channel.render(image, font, channel_selected==channel.channel - 1)
+        channel.render(image, font, channel_selected == channel.channel - 1)
 
     # Draw the snooze icon- will be pulsing red if the alarm state is True
     r = 129
@@ -271,7 +305,7 @@ def main():
     piezo = Piezo()
     time_last_beep = time.time()
 
-    settings_file = "water.yml"
+    settings_file = "settings.yml"
     if len(sys.argv) > 1:
         settings_file = sys.argv[1]
     settings_file = pathlib.Path(settings_file)
@@ -279,7 +313,9 @@ def main():
         try:
             config = yaml.safe_load(open(settings_file))
         except yaml.parser.ParserError as e:
-            raise yaml.parser.ParserError("Error parsing settings file: {} ({})".format(settings_file, e))
+            raise yaml.parser.ParserError(
+                "Error parsing settings file: {} ({})".format(settings_file, e)
+            )
 
         for channel in channels:
             ch = config.get("channel{}".format(channel.channel), None)
@@ -294,13 +330,14 @@ def main():
     for channel in channels:
         print(channel)
 
-    print("""Settings:
+    print(
+        """Settings:
 Alarm Enabled: {}
 Alarm Interval: {:.2f}s
 """.format(
-    alarm_enable,
-    alarm_interval
-))
+            alarm_enable, alarm_interval
+        )
+    )
 
     while True:
         update()

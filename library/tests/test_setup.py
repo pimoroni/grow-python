@@ -9,7 +9,7 @@ def test_moisture_setup(GPIO, smbus):
 def test_moisture_read_all(GPIO, smbus):
     from grow import moisture
     moisture._is_setup = False
-    
+
     result = moisture.read_all()
 
     assert type(result(1)) == float

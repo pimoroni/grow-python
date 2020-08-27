@@ -1,0 +1,10 @@
+channel1:
+        warn_level: 0.2
+        icon: icons/flat-4.png
+channel2:
+        warn_level: 0.2
+channel3:
+        warn_level: 0.2
+general:
+        alarm_enable: True
+        alarm_interval: 1.0

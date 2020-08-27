@@ -1,7 +1,5 @@
 # Grow <!-- omit in toc -->
 
-Grow 
-
 - [Getting Started](#getting-started)
   - [Requirements](#requirements)
     - [Python 3 & pip](#python-3--pip)
@@ -38,7 +36,7 @@ You should use Python 3, which may need installing on your Pi:
 
 ```
 sudo apt update
-sudo apt install python3 python3-pip
+sudo apt install python3 python3-pip python3-setuptools
 ```
 
 #### Enabling i2c and spi
@@ -48,6 +46,14 @@ You can use `sudo raspi-config` on the command line, the GUI Raspberry Pi Config
 ```
 sudo raspi-config nonint do_i2c 0
 sudo raspi-config nonint do_spi 0
+```
+
+### Installing Dependencies
+
+The following dependencies are required:
+
+```
+sudo apt install python3-yaml python3-smbus python3-pil python3-spidev python3-rpi.gpio
 ```
 
 ### Installing the library
@@ -174,7 +180,7 @@ while True:
 moisture1.active()
 ```
 
-Returns `True` if the moisture sensor is connected and returning valid readings. 
+Returns `True` if the moisture sensor is connected and returning valid readings.
 
 Checks if a pulse has happened within the last second, and that the reading is within a sensible range.
 

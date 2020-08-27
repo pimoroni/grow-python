@@ -29,21 +29,22 @@ curl -sSL https://get.pimoroni.com/grow | bash
 
 ## Or... Install from PyPi and configure manually:
 
-* Run `sudo pip install growhat`
+* Install dependencies:
+
+```
+sudo apt install python3-setuptools python3-pip python3-yaml python3-smbus python3-pil python3-spidev python3-rpi.gpio
+```
+
+* Run `sudo pip3 install growhat`
 
 **Note** this wont perform any of the required configuration changes on your Pi, you may additionally need to:
 
-* Enable i2c: `raspi-config nonint do_i2c 0`
-* Enable SPI: `raspi-config nonint do_spi 0`
-
-And install additional dependencies:
-
-```
-sudo apt install python-numpy python-smbus python-pil python-setuptools
-```
+* Enable i2c: `sudo raspi-config nonint do_i2c 0`
+* Enable SPI: `sudo raspi-config nonint do_spi 0`
+* Add the following to `/boot/config.txt`: `dtoverlay=spi0-cs,cs0_pin=14`
 
 ## Help & Support
 
-* GPIO Pinout - https://pinout.xyz/pinout/enviro_plus
+* GPIO Pinout - https://pinout.xyz/pinout/grow_hat_mini
 * Support forums - http://forums.pimoroni.com/c/support
 * Discord - https://discord.gg/hr93ByC

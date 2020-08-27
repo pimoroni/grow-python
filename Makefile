@@ -27,7 +27,7 @@ check:
 	@echo "Checking for trailing whitespace"
 	@! grep -IUrn --color "[[:blank:]]$$" --exclude-dir=sphinx --exclude-dir=.tox --exclude-dir=.git --exclude=PKG-INFO
 	@echo "Checking for DOS line-endings"
-	@! grep -IUrn --color "" --exclude-dir=sphinx --exclude-dir=.tox --exclude-dir=.git --exclude=Makefile
+	@! grep -lIUrn --color "" --exclude-dir=sphinx --exclude-dir=.tox --exclude-dir=.git --exclude=Makefile
 	@echo "Checking library/CHANGELOG.txt"
 	@cat library/CHANGELOG.txt | grep ^${LIBRARY_VERSION}
 	@echo "Checking library/${LIBRARY_NAME}/__init__.py"
@@ -36,14 +36,14 @@ check:
 tag:
 	git tag -a "v${LIBRARY_VERSION}" -m "Version ${LIBRARY_VERSION}"
 
-python-readme: library/README.rst
+python-readme: library/README.md
 
 python-license: library/LICENSE.txt
 
-library/README.rst: README.md library/CHANGELOG.txt
-	pandoc --from=markdown --to=rst -o library/README.rst README.md
-	echo "" >> library/README.rst
-	cat library/CHANGELOG.txt >> library/README.rst
+library/README.md: README.md library/CHANGELOG.txt
+	cp README.md library/README.md
+	printf "\n# Changelog\n" >> library/README.md
+	cat library/CHANGELOG.txt >> library/README.md
 
 library/LICENSE.txt: LICENSE
 	cp LICENSE library/LICENSE.txt
