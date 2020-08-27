@@ -1,18 +1,20 @@
-import time
-import sys
-import pathlib
-import yaml
-import ST7735
-import random
-import math
+#!/usr/bin/env python3
 import logging
-from PIL import Image, ImageDraw, ImageFont
-from fonts.ttf import RobotoMedium as UserFont
-import RPi.GPIO as GPIO
+import math
+import pathlib
+import random
+import sys
+import time
 
+import RPi.GPIO as GPIO
+import ST7735
+from fonts.ttf import RobotoMedium as UserFont
+from PIL import Image, ImageDraw, ImageFont
+
+import yaml
+from grow import Piezo
 from grow.moisture import Moisture
 from grow.pump import Pump
-from grow import Piezo
 
 
 class Channel:
