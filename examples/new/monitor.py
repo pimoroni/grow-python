@@ -106,8 +106,6 @@ class DetailView(View):
             fill=(255, 255, 255),
         )
 
-        
-
 
 class EditView(View):
     def __init__(self, channel=None):
@@ -119,10 +117,39 @@ class EditView(View):
         width, height = canvas.size
         draw.rectangle((0, 0, width, height), (255, 255, 255))
 
-        draw.rectangle((
-            0, 0,
-            40, DISPLAY_HEIGHT
-        ), (60, 60, 60))
+        self.channel.render_edit(canvas, font)
+
+        # Icon backdrops
+        draw.rectangle((0, 0, 19, 19), (138, 138, 138))
+        draw.rectangle((DISPLAY_WIDTH - 38, 0, DISPLAY_WIDTH, 19), (75, 166, 252))
+
+        draw.rectangle((0, DISPLAY_HEIGHT - 19, 60, DISPLAY_WIDTH), (32, 137, 251))
+        draw.rectangle((DISPLAY_WIDTH - 60, DISPLAY_HEIGHT - 19, DISPLAY_WIDTH, DISPLAY_HEIGHT), (254, 219, 82))
+
+        # Icons
+        icon(image, icon_rightarrow, (0, 0), (255, 255, 255))
+
+        # Edit
+        draw.text(
+            (DISPLAY_WIDTH - 36, 3),
+            "Done",
+            font=font,
+            fill=(255, 255, 255)
+        )
+
+        draw.text(
+            (0, HEIGHT - 19),
+            "Set Wet",
+            font=font,
+            fill=(255, 255, 255)
+        )
+
+        draw.text(
+            (DISPLAY_WIDTH - 60, HEIGHT - 19),
+            "Set Dry",
+            font=font,
+            fill=(255, 255, 255)
+        )
 
 
 class Channel:
@@ -237,6 +264,21 @@ Dry point: {dry_point}
             return True
         return False
 
+    def render_edit(self, image, font):
+        draw = ImageDraw.Draw(image)
+        draw.text(
+            (23, 3),
+            "{}".format(self.title),
+            font=font,
+            fill=(0, 0, 0)
+        )
+        draw.text(
+            (5, 30),
+            "Sat: {:.2f}%".format(self.sensor.saturation * 100),
+            font=font,
+            fill=(0, 0, 0)
+        )
+
     def render_detail(self, image, font):
         draw = ImageDraw.Draw(image)
         draw.text(
@@ -317,7 +359,7 @@ Dry point: {dry_point}
             if sat < self.alarm_level and not self.alarm:
                 logging.warning(
                     "Alarm on Channel: {} - saturation is {:.2f}% (warn level {:.2f}%)".format(
-                        self.channel, sat * 10, self.alarm_level * 10
+                        self.channel, sat * 100, self.alarm_level * 100
                     )
                 )
                 self.alarm = True
@@ -359,10 +401,11 @@ def handle_button(pin):
     label = LABELS[index]
 
     if label == "A":  # Select View
-        current_view += 1
-        current_view %= len(views)
-        current_subview = 0
-        print("Switched to view {}".format(current_view))
+        if current_subview == 0:
+            current_view += 1
+            current_view %= len(views)
+            current_subview = 0
+            print("Switched to view {}".format(current_view))
 
     if label == "B":  # Cancel Alarm
         alarm = False
@@ -370,7 +413,11 @@ def handle_button(pin):
             channel.alarm = False
 
     if label == "X":
-        pass
+        view = views[current_view]
+        if isinstance(view, tuple):
+            current_subview += 1
+            current_subview %= len(view)
+            print("Switched to subview {}".format(current_subview))
 
     if label == "Y":
         pass
@@ -382,7 +429,7 @@ def main():
     GPIO.setup(BUTTONS, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     for pin in BUTTONS:
-        GPIO.add_event_detect(pin, GPIO.FALLING, handle_button, bouncetime=150)
+        GPIO.add_event_detect(pin, GPIO.FALLING, handle_button, bouncetime=200)
 
     alarm_enable = True
     alarm_interval = 10.0
