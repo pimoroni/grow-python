@@ -30,6 +30,9 @@ icon_nodrop = Image.open("../icons/icon-nodrop.png")
 icon_rightarrow = Image.open("../icons/icon-rightarrow.png")
 icon_snooze = Image.open("../icons/icon-snooze.png")
 
+alarm = False
+alarm_enable = True
+
 
 def icon(image, icon, position, color):
     col = Image.new("RGBA", (20, 20), color=color)
@@ -77,6 +80,8 @@ class MainView(View):
 
         # Icons
         icon(image, icon_rightarrow, (0, 0), (255, 255, 255))
+
+        alarm.render(canvas, (0, DISPLAY_HEIGHT - 19))
 
 
 class DetailView(View):
@@ -365,6 +370,85 @@ Dry point: {dry_point}
                 self.alarm = True
 
 
+class Alarm:
+    def __init__(self, enabled=True, interval=10.0, beep_frequency=440):
+        self.piezo = Piezo()
+        self.enabled = enabled
+        self.interval = interval
+        self.beep_frequency = beep_frequency
+        self._triggered = False
+        self._time_last_beep = time.time()
+        self._sleep_until = None
+
+    def update_from_yml(self, config):
+        if config is not None:
+            self.enabled = config.get("alarm_enable", self.enabled)
+            self.interval = config.get("alarm_interval", self.interval)
+
+    def update(self):
+        if self._sleep_until is not None:
+            if self._sleep_until > time.time():
+                return
+
+        if self.enabled and self._triggered and time.time() - self._time_last_beep > self.interval:
+            self.piezo.beep(self.beep_frequency, 0.1, blocking=False)
+            threading.Timer(0.3, self.piezo.beep, args=[self.beep_frequency, 0.1], kwargs={"blocking":False}).start()
+            threading.Timer(0.6, self.piezo.beep, args=[self.beep_frequency, 0.1], kwargs={"blocking":False}).start()
+            self._time_last_beep = time.time()
+
+    def render(self, canvas, position=(0, 0)):
+        draw = ImageDraw.Draw(canvas)
+        x, y = position
+        # Draw the snooze icon- will be pulsing red if the alarm state is True
+        draw.rectangle((x, y, x + 19, y + 19), (255, 255, 255))
+        r = 129
+        if self._triggered:
+            r = int(((math.sin(time.time() * 3 * math.pi) + 1.0) / 2.0) * 255)
+        icon(image, icon_snooze, (x, y - 1), (r, 129, 129))
+
+        if self._sleep_until is not None:  # TODO maybe sleeping alarm icon?
+            if self._sleep_until > time.time():
+                draw.text((x, y), "zZ", font=font, fill=(255, 255, 255))
+
+    def trigger(self):
+        self._triggered = True
+
+    def disable(self):
+        self.enabled = False
+
+    def enable(self):
+        self.enabled = True
+
+    def sleep(self, duration=500):
+        self._sleep_until = time.time() + duration
+
+
+def handle_button(pin):
+    global current_view, current_subview
+    index = BUTTONS.index(pin)
+    label = LABELS[index]
+
+    if label == "A":  # Select View
+        if current_subview == 0:
+            current_view += 1
+            current_view %= len(views)
+            current_subview = 0
+            print("Switched to view {}".format(current_view))
+
+    if label == "B":  # Sleep Alarm
+        alarm.sleep()
+
+    if label == "X":
+        view = views[current_view]
+        if isinstance(view, tuple):
+            current_subview += 1
+            current_subview %= len(view)
+            print("Switched to subview {}".format(current_subview))
+
+    if label == "Y":
+        pass
+
+
 # Set up the ST7735 SPI Display
 display = ST7735.ST7735(
     port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=80000000
@@ -394,47 +478,18 @@ views = [
     (DetailView(channel=channels[2]), EditView(channel=channels[2]))
 ]
 
-
-def handle_button(pin):
-    global current_view, current_subview, alarm
-    index = BUTTONS.index(pin)
-    label = LABELS[index]
-
-    if label == "A":  # Select View
-        if current_subview == 0:
-            current_view += 1
-            current_view %= len(views)
-            current_subview = 0
-            print("Switched to view {}".format(current_view))
-
-    if label == "B":  # Cancel Alarm
-        alarm = False
-        for channel in channels:
-            channel.alarm = False
-
-    if label == "X":
-        view = views[current_view]
-        if isinstance(view, tuple):
-            current_subview += 1
-            current_subview %= len(view)
-            print("Switched to subview {}".format(current_subview))
-
-    if label == "Y":
-        pass
+alarm = Alarm()
 
 
 def main():
+    global alarm
+
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     GPIO.setup(BUTTONS, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     for pin in BUTTONS:
         GPIO.add_event_detect(pin, GPIO.FALLING, handle_button, bouncetime=200)
-
-    alarm_enable = True
-    alarm_interval = 10.0
-    piezo = Piezo()
-    time_last_beep = time.time()
 
     settings_file = "settings.yml"
     if len(sys.argv) > 1:
@@ -454,8 +509,7 @@ def main():
 
         settings = config.get("general", None)
         if settings is not None:
-            alarm_enable = settings.get("alarm_enable", alarm_enable)
-            alarm_interval = settings.get("alarm_interval", alarm_interval)
+            alarm.update_from_yml(settings)
 
     print("Channels:")
     for channel in channels:
@@ -466,11 +520,18 @@ def main():
 Alarm Enabled: {}
 Alarm Interval: {:.2f}s
 """.format(
-            alarm_enable, alarm_interval
+            alarm.enabled, alarm.interval
         )
     )
 
     while True:
+        for channel in channels:
+            channel.update()
+            if channel.alarm:
+                alarm.trigger()
+
+        alarm.update()
+
         view = views[current_view]
         if isinstance(view, tuple):
             view = view[current_subview]
@@ -478,11 +539,7 @@ Alarm Interval: {:.2f}s
         view.render(image)
         display.display(image.convert("RGB"))
 
-        #if alarm_enable and alarm and time.time() - time_last_beep > alarm_interval:
-        #    piezo.beep(440, 0.1, blocking=False)
-        #    threading.Timer(0.3, piezo.beep, args=[440, 0.1], kwargs={"blocking":False}).start()
-        #    threading.Timer(0.6, piezo.beep, args=[440, 0.1], kwargs={"blocking":False}).start()
-        #    time_last_beep = time.time()
+
 
         # 5 FPS
         time.sleep(1.0 / 10)
