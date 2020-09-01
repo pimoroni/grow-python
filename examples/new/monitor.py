@@ -19,6 +19,8 @@ from grow.moisture import Moisture
 from grow.pump import Pump
 
 
+FPS = 10
+
 BUTTONS = [5, 6, 16, 24]
 LABELS = ["A", "B", "X", "Y"]
 
@@ -59,14 +61,21 @@ def text_in_rect(canvas, text, font, rect, line_spacing=1.1, textcolor=(0, 0, 0)
         while len(lines) < max_lines and len(words) > 0:
             line = []
 
-            while len(words) > 0 and font.getsize(" ".join(line + [words[0]]))[0] <= width:
+            while (
+                len(words) > 0 and font.getsize(" ".join(line + [words[0]]))[0] <= width
+            ):
                 line.append(words.pop(0))
 
             lines.append(" ".join(line))
 
-        if(len(lines)) <= max_lines and len(words) == 0:
+        if len(lines) <= max_lines and len(words) == 0:
             # Solution is found, render the text.
-            y = int(rect[1] + (height / 2) - (len(lines) * line_height / 2) - (line_height - font.size) / 2)
+            y = int(
+                rect[1]
+                + (height / 2)
+                - (len(lines) * line_height / 2)
+                - (line_height - font.size) / 2
+            )
 
             bounds = [rect[2], y, rect[0], y + len(lines) * line_height]
 
@@ -145,9 +154,17 @@ class View:
         """Draw a slightly transparent overlay with some text."""
         overlay = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
-        draw.rectangle((0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254, 240))  # Overlay backdrop
+        draw.rectangle(
+            (0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254, 240)
+        )  # Overlay backdrop
         draw.rectangle((0, 20, DISPLAY_WIDTH, 21), fill=COLOR_BLUE)  # Top border
-        text_in_rect(draw, text, font, (3, 20, DISPLAY_WIDTH - 3, DISPLAY_HEIGHT - 2), line_spacing=1)
+        text_in_rect(
+            draw,
+            text,
+            font,
+            (3, 20, DISPLAY_WIDTH - 3, DISPLAY_HEIGHT - 2),
+            line_spacing=1,
+        )
         self._image.paste(Image.alpha_composite(self._image, overlay), (0, 0))
 
 
@@ -170,10 +187,7 @@ class MainView(View):
         active = channel.sensor.active and channel.enabled
         alarm_level = channel.alarm_level
 
-        self._draw.rectangle(
-            (x, 0, x + 37, DISPLAY_HEIGHT),
-            (230, 230, 230)
-        )
+        self._draw.rectangle((x, 0, x + 37, DISPLAY_HEIGHT), (230, 230, 230))
 
         if active:
             # Draw background bars
@@ -184,8 +198,7 @@ class MainView(View):
 
         y = int((1.0 - alarm_level) * DISPLAY_HEIGHT)
         self._draw.rectangle(
-            (x, y, x + 37, y),
-            (255, 0, 0) if channel.alarm else (0, 0, 0)
+            (x, y, x + 37, y), (255, 0, 0) if channel.alarm else (0, 0, 0)
         )
 
         # Channel selection icons
@@ -193,10 +206,7 @@ class MainView(View):
         col = channel.indicator_color(saturation, channel.label_colours)
         if channel.alarm:
             icon(
-                self._image,
-                icon_snooze,
-                (x - 2, 0),
-                col if active else (129, 129, 129)
+                self._image, icon_snooze, (x - 2, 0), col if active else (129, 129, 129)
             )
         else:
             self._draw.rectangle(
@@ -233,8 +243,18 @@ class MainView(View):
         help = option["help"]
 
         if self._change_mode:
-            self.label("Y", "Yes" if mode == "bool" else "++", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
-            self.label("B", "No" if mode == "bool" else "--", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+            self.label(
+                "Y",
+                "Yes" if mode == "bool" else "++",
+                textcolor=COLOR_WHITE,
+                bgcolor=COLOR_YELLOW,
+            )
+            self.label(
+                "B",
+                "No" if mode == "bool" else "--",
+                textcolor=COLOR_WHITE,
+                bgcolor=COLOR_BLUE,
+            )
         else:
             self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
             self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
@@ -368,7 +388,10 @@ class DetailView(ChannelView):
         self.draw_status()
 
         graph_height = DISPLAY_HEIGHT - 40
-        self._draw.rectangle((0, DISPLAY_HEIGHT - graph_height, DISPLAY_WIDTH, DISPLAY_HEIGHT), (10, 10, 10))
+        self._draw.rectangle(
+            (0, DISPLAY_HEIGHT - graph_height, DISPLAY_WIDTH, DISPLAY_HEIGHT),
+            (10, 10, 10),
+        )
 
         for x, value in enumerate(self.channel.sensor.history[:DISPLAY_WIDTH]):
             color = self.channel.indicator_color(value)
@@ -399,7 +422,12 @@ class DetailView(ChannelView):
             (r, 0, 0),
         )
 
-        icon(self._image, icon_snooze, (DISPLAY_WIDTH - 40, DISPLAY_HEIGHT - alarm_line - 10), (r, 0, 0))
+        icon(
+            self._image,
+            icon_snooze,
+            (DISPLAY_WIDTH - 40, DISPLAY_HEIGHT - alarm_line - 10),
+            (r, 0, 0),
+        )
 
         # Next button
         self._draw.rectangle((0, 0, 19, 19), COLOR_BLUE)
@@ -453,10 +481,11 @@ class EditView(ChannelView):
         ChannelView.__init__(self, image, channel)
 
     def render(self):
-        graph_height = DISPLAY_HEIGHT - 40
         self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255))
 
-        self._draw.text((23, 3), "{}".format(self.channel.title), font=font, fill=(0, 0, 0))
+        self._draw.text(
+            (23, 3), "{}".format(self.channel.title), font=font, fill=(0, 0, 0)
+        )
 
         option = self._options[self._current_option]
         title = option["title"]
@@ -470,8 +499,18 @@ class EditView(ChannelView):
         self.draw_status(True)
 
         if self._change_mode:
-            self.label("Y", "Yes" if mode == "bool" else "++", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
-            self.label("B", "No" if mode == "bool" else "--", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+            self.label(
+                "Y",
+                "Yes" if mode == "bool" else "++",
+                textcolor=COLOR_WHITE,
+                bgcolor=COLOR_YELLOW,
+            )
+            self.label(
+                "B",
+                "No" if mode == "bool" else "--",
+                textcolor=COLOR_WHITE,
+                bgcolor=COLOR_BLUE,
+            )
         else:
             self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
             self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
@@ -671,7 +710,7 @@ Dry point: {dry_point}
             pump_time=self.pump_time,
             watering_delay=self.watering_delay,
             wet_point=self.wet_point,
-            dry_point=self.dry_point
+            dry_point=self.dry_point,
         )
 
     def water(self):
@@ -931,7 +970,7 @@ Alarm Interval: {:.2f}s
             "max": 60,
             "format": lambda value: f"{value:02.0f}sec",
             "object": alarm,
-            "help": "Time between alarm beeps."
+            "help": "Time between alarm beeps.",
         },
         {
             "title": "Alarm Enable",
@@ -939,16 +978,25 @@ Alarm Interval: {:.2f}s
             "mode": "bool",
             "format": lambda value: "Yes" if value else "No",
             "object": alarm,
-            "help": "Enable the piezo alarm beep."
+            "help": "Enable the piezo alarm beep.",
         },
     ]
 
     viewcontroller = ViewController(
         [
             MainView(image, channels=channels, options=main_options),
-            (DetailView(image, channel=channels[0]), EditView(image, channel=channels[0])),
-            (DetailView(image, channel=channels[1]), EditView(image, channel=channels[1])),
-            (DetailView(image, channel=channels[2]), EditView(image, channel=channels[2])),
+            (
+                DetailView(image, channel=channels[0]),
+                EditView(image, channel=channels[0]),
+            ),
+            (
+                DetailView(image, channel=channels[1]),
+                EditView(image, channel=channels[1]),
+            ),
+            (
+                DetailView(image, channel=channels[2]),
+                EditView(image, channel=channels[2]),
+            ),
         ]
     )
 
@@ -964,8 +1012,7 @@ Alarm Interval: {:.2f}s
         viewcontroller.render()
         display.display(image.convert("RGB"))
 
-        # 5 FPS
-        time.sleep(1.0 / 10)
+        time.sleep(1.0 / FPS)
 
 
 if __name__ == "__main__":
