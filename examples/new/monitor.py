@@ -42,8 +42,49 @@ alarm = False
 alarm_enable = True
 
 
+def text_in_rect(canvas, text, font, rect, line_spacing=1.1, textcolor=(0, 0, 0)):
+    width = rect[2] - rect[0]
+    height = rect[3] - rect[1]
+
+    # Given a rectangle, reflow and scale text to fit, centred
+    while font.size > 0:
+        space_width = font.getsize(" ")[0]
+        line_height = int(font.size * line_spacing)
+        max_lines = math.floor(height / line_height)
+        lines = []
+
+        # Determine if text can fit at current scale.
+        words = text.split(" ")
+
+        while len(lines) < max_lines and len(words) > 0:
+            line = []
+
+            while len(words) > 0 and font.getsize(" ".join(line + [words[0]]))[0] <= width:
+                line.append(words.pop(0))
+
+            lines.append(" ".join(line))
+
+        if(len(lines)) <= max_lines and len(words) == 0:
+            # Solution is found, render the text.
+            y = int(rect[1] + (height / 2) - (len(lines) * line_height / 2) - (line_height - font.size) / 2)
+
+            bounds = [rect[2], y, rect[0], y + len(lines) * line_height]
+
+            for line in lines:
+                line_width = font.getsize(line)[0]
+                x = int(rect[0] + (width / 2) - (line_width / 2))
+                bounds[0] = min(bounds[0], x)
+                bounds[2] = max(bounds[2], x + line_width)
+                canvas.text((x, y), line, font=font, fill=textcolor)
+                y += line_height
+
+            return tuple(bounds)
+
+        font = ImageFont.truetype(font.path, font.size - 1)
+
+
 def icon(image, icon, position, color):
-    col = Image.new("RGBA", (20, 20), color=color)
+    col = Image.new("RGBA", icon.size, color=color)
     image.paste(col, position, mask=icon)
 
 
@@ -100,9 +141,23 @@ class View:
         self._draw.rectangle((x, y, x2, y2), bgcolor)
         self._draw.text((x + margin, y + margin - 1), text, font=font, fill=textcolor)
 
+    def draw_next_button(self, disabled=False):
+        if disabled:
+            # Draw disabled "Next" button
+            self._draw.rectangle((0, 0, 19, 19), (138, 138, 138))
+            icon(self._image, icon_rightarrow, (0, 0), (150, 150, 150))
+        else:
+            self._draw.rectangle((0, 0, 19, 19), COLOR_BLUE)
+            icon(self._image, icon_rightarrow, (0, 0), COLOR_WHITE)
+
 
 class MainView(View):
-    def __init__(self, image, channels=None):
+    def __init__(self, image, channels=None, options=[]):
+        self._options = options
+        self._current_option = 0
+        self._change_mode = False
+        self._edit_mode = False
+
         self.channels = channels
         View.__init__(self, image)
 
@@ -112,6 +167,12 @@ class MainView(View):
         # Saturation amounts from each sensor
         saturation = channel.sensor.saturation
         active = channel.sensor.active and channel.enabled
+        alarm_level = channel.alarm_level
+
+        self._draw.rectangle(
+            (x, 0, x + 37, DISPLAY_HEIGHT),
+            (230, 230, 230)
+        )
 
         if active:
             # Draw background bars
@@ -120,8 +181,14 @@ class MainView(View):
                 channel.indicator_color(saturation) if active else (229, 229, 229),
             )
 
+        y = int((1.0 - alarm_level) * DISPLAY_HEIGHT)
+        self._draw.rectangle(
+            (x, y, x + 37, y),
+            (255, 0, 0) if channel.alarm else (0, 0, 0)
+        )
+
         # Channel selection icons
-        x += 15
+        x += 11
         col = channel.indicator_color(saturation, channel.label_colours)
         if channel.alarm:
             icon(
@@ -146,6 +213,45 @@ class MainView(View):
         )
 
     def render(self):
+        if self._edit_mode:
+            self.render_edit()
+        else:
+            self.render_overview()
+
+    def render_edit(self):
+        self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), COLOR_WHITE)
+        self.label("X", "Done", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
+
+        option = self._options[self._current_option]
+        title = option["title"]
+        prop = option["prop"]
+        object = option["object"]
+        value = getattr(object, prop)
+        text = option["format"](value)
+        mode = option.get("mode", "int")
+        help = option["help"]
+
+        if self._change_mode:
+            self.label("Y", "Yes" if mode == "bool" else "++", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
+            self.label("B", "No" if mode == "bool" else "--", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+        else:
+            self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+            self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
+
+        self._draw.rectangle((0, 20, DISPLAY_WIDTH, 40), fill=(200, 200, 200))
+        text_in_rect(self._draw, help, font, (3, 20, DISPLAY_WIDTH - 3, 38), line_spacing=1)
+
+        self._draw.text(
+            (23, 3),
+            "Settings",
+            font=font,
+            fill=(0, 0, 0),
+        )
+        self._draw.text((3, 43), f"{title} : {text}", font=font, fill=(0, 0, 0))
+
+        self.draw_next_button(True)
+
+    def render_overview(self):
         self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255))
 
         for channel in self.channels:
@@ -159,26 +265,80 @@ class MainView(View):
 
         alarm.render((0, DISPLAY_HEIGHT - 19))
 
+        self.label("X", "S", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
+        self.label("Y", "BL", textcolor=COLOR_WHITE, bgcolor=COLOR_GREEN)
+
+    def button_a(self):
+        return self._edit_mode
+
+    def button_b(self):
+        if self._edit_mode:
+            if self._change_mode:
+                option = self._options[self._current_option]
+                prop = option["prop"]
+                mode = option.get("mode", "int")
+                object = option["object"]
+
+                value = getattr(object, prop)
+                if mode == "bool":
+                    value = False
+                else:
+                    inc = option["inc"]
+                    limit = option["min"]
+                    value -= inc
+                    if value < limit:
+                        value = limit
+                setattr(object, prop, value)
+            else:
+                self._current_option += 1
+                self._current_option %= len(self._options)
+            return True
+        else:
+            return False
+
+    def button_x(self):
+        if self._edit_mode:
+            if self._change_mode:
+                self._change_mode = False
+            else:
+                self._edit_mode = False
+        else:
+            self._edit_mode = True
+        return True
+
+    def button_y(self):
+        if self._change_mode:
+            option = self._options[self._current_option]
+            prop = option["prop"]
+            mode = option.get("mode", "int")
+            object = option["object"]
+
+            value = getattr(object, prop)
+            if mode == "bool":
+                value = True
+            else:
+                inc = option["inc"]
+                limit = option["max"]
+                value += inc
+                if value > limit:
+                    value = limit
+            setattr(object, prop, value)
+        else:
+            self._change_mode = True
+
 
 class ChannelView(View):
     def draw_status(self, subtle=False):
+        status = f"{self.channel.sensor.saturation * 100:.2f}% ({self.channel.sensor.moisture:.2f}Hz)"
+
         self._draw.rectangle((0, 20, DISPLAY_WIDTH, 40), (50, 50, 50))
 
         self._draw.text(
             (3, 23),
-            f"{self.channel.sensor.saturation * 100:.2f}% ({self.channel.sensor.moisture:.2f}Hz)",
+            status,
             font=font,
             fill=(150, 150, 150) if subtle else (255, 255, 255),
         )
-
-    def draw_next_button(self, disabled=False):
-        if disabled:
-            # Draw disabled "Next" button
-            self._draw.rectangle((0, 0, 19, 19), (138, 138, 138))
-            icon(self._image, icon_rightarrow, (0, 0), (150, 150, 150))
-        else:
-            self._draw.rectangle((0, 0, 19, 19), COLOR_BLUE)
-            icon(self._image, icon_rightarrow, (0, 0), COLOR_WHITE)
 
 
 class DetailView(ChannelView):
@@ -220,7 +380,7 @@ class DetailView(ChannelView):
                 0,
                 DISPLAY_HEIGHT - alarm_line,
                 DISPLAY_WIDTH - 40,
-                DISPLAY_HEIGHT - alarm_line + 1,
+                DISPLAY_HEIGHT - alarm_line,
             ),
             (r, 0, 0),
         )
@@ -229,7 +389,7 @@ class DetailView(ChannelView):
                 DISPLAY_WIDTH - 20,
                 DISPLAY_HEIGHT - alarm_line,
                 DISPLAY_WIDTH,
-                DISPLAY_HEIGHT - alarm_line + 1,
+                DISPLAY_HEIGHT - alarm_line,
             ),
             (r, 0, 0),
         )
@@ -615,7 +775,6 @@ class ViewController:
             self._current_view += 1
             self._current_view %= len(self.views)
             self._current_subview = 0
-            print(f"Switched to view {self._current_view}")
 
     def get_current_view(self):
         view = self.views[self._current_view]
@@ -652,6 +811,8 @@ class ViewController:
 
 
 def handle_button(pin):
+    global backlight
+
     index = BUTTONS.index(pin)
     label = LABELS[index]
 
@@ -666,8 +827,12 @@ def handle_button(pin):
         viewcontroller.button_x()
 
     if label == "Y":
-        viewcontroller.button_y()
+        if not viewcontroller.button_y():
+            backlight = not backlight
+            display.set_backlight(backlight)
 
+
+backlight = True
 
 # Set up the ST7735 SPI Display
 display = ST7735.ST7735(
@@ -681,6 +846,7 @@ light = ltr559.LTR559()
 # Set up our canvas and prepare for drawing
 image = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(255, 255, 255))
 font = ImageFont.truetype(UserFont, 14)
+font_small = ImageFont.truetype(UserFont, 10)
 
 
 # Pick a random selection of plant icons to display on screen
@@ -690,20 +856,11 @@ channels = [
     Channel(3, 3, 3),
 ]
 
-viewcontroller = ViewController(
-    [
-        MainView(image, channels=channels),
-        (DetailView(image, channel=channels[0]), EditView(image, channel=channels[0])),
-        (DetailView(image, channel=channels[1]), EditView(image, channel=channels[1])),
-        (DetailView(image, channel=channels[2]), EditView(image, channel=channels[2])),
-    ]
-)
-
 alarm = Alarm(image)
 
 
 def main():
-    global alarm
+    global alarm, viewcontroller
 
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
@@ -743,6 +900,36 @@ Alarm Interval: {:.2f}s
 """.format(
             alarm.enabled, alarm.interval
         )
+    )
+
+    main_options = [
+        {
+            "title": "Alarm Interval",
+            "prop": "interval",
+            "inc": 1,
+            "min": 1,
+            "max": 60,
+            "format": lambda value: f"{value:02.0f}sec",
+            "object": alarm,
+            "help": "Time between alarm beeps."
+        },
+        {
+            "title": "Alarm Enable",
+            "prop": "enabled",
+            "mode": "bool",
+            "format": lambda value: "Yes" if value else "No",
+            "object": alarm,
+            "help": "Enable the piezo alarm beep."
+        },
+    ]
+
+    viewcontroller = ViewController(
+        [
+            MainView(image, channels=channels, options=main_options),
+            (DetailView(image, channel=channels[0]), EditView(image, channel=channels[0])),
+            (DetailView(image, channel=channels[1]), EditView(image, channel=channels[1])),
+            (DetailView(image, channel=channels[2]), EditView(image, channel=channels[2])),
+        ]
     )
 
     while True:
