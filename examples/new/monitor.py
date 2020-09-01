@@ -141,14 +141,14 @@ class View:
         self._draw.rectangle((x, y, x2, y2), bgcolor)
         self._draw.text((x + margin, y + margin - 1), text, font=font, fill=textcolor)
 
-    def draw_next_button(self, disabled=False):
-        if disabled:
-            # Draw disabled "Next" button
-            self._draw.rectangle((0, 0, 19, 19), (138, 138, 138))
-            icon(self._image, icon_rightarrow, (0, 0), (150, 150, 150))
-        else:
-            self._draw.rectangle((0, 0, 19, 19), COLOR_BLUE)
-            icon(self._image, icon_rightarrow, (0, 0), COLOR_WHITE)
+    def overlay(self, text):
+        """Draw a slightly transparent overlay with some text."""
+        overlay = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        draw.rectangle((0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254, 240))  # Overlay backdrop
+        draw.rectangle((0, 20, DISPLAY_WIDTH, 21), fill=COLOR_BLUE)  # Top border
+        text_in_rect(draw, text, font, (3, 20, DISPLAY_WIDTH - 3, DISPLAY_HEIGHT - 2), line_spacing=1)
+        self._image.paste(Image.alpha_composite(self._image, overlay), (0, 0))
 
 
 class MainView(View):
@@ -157,6 +157,7 @@ class MainView(View):
         self._current_option = 0
         self._change_mode = False
         self._edit_mode = False
+        self._help_mode = False
 
         self.channels = channels
         View.__init__(self, image)
@@ -238,8 +239,7 @@ class MainView(View):
             self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
             self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
 
-        self._draw.rectangle((0, 20, DISPLAY_WIDTH, 40), fill=(200, 200, 200))
-        text_in_rect(self._draw, help, font, (3, 20, DISPLAY_WIDTH - 3, 38), line_spacing=1)
+        self.label("A", "?", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
 
         self._draw.text(
             (23, 3),
@@ -249,7 +249,8 @@ class MainView(View):
         )
         self._draw.text((3, 43), f"{title} : {text}", font=font, fill=(0, 0, 0))
 
-        self.draw_next_button(True)
+        if self._help_mode:
+            self.overlay(help)
 
     def render_overview(self):
         self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255))
@@ -269,9 +270,13 @@ class MainView(View):
         self.label("Y", "BL", textcolor=COLOR_WHITE, bgcolor=COLOR_GREEN)
 
     def button_a(self):
+        if self._edit_mode:
+            self._help_mode = not self._help_mode
         return self._edit_mode
 
     def button_b(self):
+        if self._help_mode:
+            return True
         if self._edit_mode:
             if self._change_mode:
                 option = self._options[self._current_option]
@@ -304,9 +309,12 @@ class MainView(View):
                 self._edit_mode = False
         else:
             self._edit_mode = True
+        self._help_mode = False
         return True
 
     def button_y(self):
+        if self._help_mode:
+            return True
         if self._change_mode:
             option = self._options[self._current_option]
             prop = option["prop"]
@@ -328,6 +336,10 @@ class MainView(View):
 
 
 class ChannelView(View):
+    def __init__(self, image, channel=None):
+        self.channel = channel
+        View.__init__(self, image)
+
     def draw_status(self, subtle=False):
         status = f"{self.channel.sensor.saturation * 100:.2f}% ({self.channel.sensor.moisture:.2f}Hz)"
 
@@ -342,10 +354,6 @@ class ChannelView(View):
 
 
 class DetailView(ChannelView):
-    def __init__(self, image, channel=None):
-        self.channel = channel
-        View.__init__(self, image)
-
     def render(self):
         width, height = self._image.size
         self._draw.rectangle((0, 0, width, height), (255, 255, 255))
@@ -357,13 +365,10 @@ class DetailView(ChannelView):
             fill=(0, 0, 0),
         )
 
-        graph_height = DISPLAY_HEIGHT - 40
-
-        self._draw.rectangle((0, 40, DISPLAY_WIDTH, 40 + graph_height), (10, 10, 10))
         self.draw_status()
 
-        offset_x = 20
-        offset_y = 20
+        graph_height = DISPLAY_HEIGHT - 40
+        self._draw.rectangle((0, DISPLAY_HEIGHT - graph_height, DISPLAY_WIDTH, DISPLAY_HEIGHT), (10, 10, 10))
 
         for x, value in enumerate(self.channel.sensor.history[:DISPLAY_WIDTH]):
             color = self.channel.indicator_color(value)
@@ -396,7 +401,9 @@ class DetailView(ChannelView):
 
         icon(self._image, icon_snooze, (DISPLAY_WIDTH - 40, DISPLAY_HEIGHT - alarm_line - 10), (r, 0, 0))
 
-        self.draw_next_button()
+        # Next button
+        self._draw.rectangle((0, 0, 19, 19), COLOR_BLUE)
+        icon(self._image, icon_rightarrow, (0, 0), COLOR_WHITE)
 
         # Edit
         self.label("X", "Edit", textcolor=(255, 255, 255), bgcolor=COLOR_RED)
@@ -412,12 +419,14 @@ class EditView(ChannelView):
                 "min": 0,
                 "max": 1.0,
                 "format": lambda value: f"{value * 100:0.2f}%",
+                "help": "Saturation at which alarm is triggered",
             },
             {
                 "title": "Enabled",
                 "prop": "enabled",
                 "mode": "bool",
-                "format": lambda value: "Yes" if value else "No"
+                "format": lambda value: "Yes" if value else "No",
+                "help": "Enable/disable this channel",
             },
             {
                 "title": "Wet Point",
@@ -426,6 +435,7 @@ class EditView(ChannelView):
                 "min": 1,
                 "max": 27,
                 "format": lambda value: f"{value:0.2f}Hz",
+                "help": "Frequency for fully saturated soil",
             },
             {
                 "title": "Dry Point",
@@ -434,21 +444,19 @@ class EditView(ChannelView):
                 "min": 1,
                 "max": 27,
                 "format": lambda value: f"{value:0.2f}Hz",
+                "help": "Frequency for fully dried soil",
             },
         ]
         self._current_option = 0
         self._change_mode = False
-        self.channel = channel
-        View.__init__(self, image)
+        self._help_mode = False
+        ChannelView.__init__(self, image, channel)
 
     def render(self):
         graph_height = DISPLAY_HEIGHT - 40
-
         self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255))
 
         self._draw.text((23, 3), "{}".format(self.channel.title), font=font, fill=(0, 0, 0))
-
-        self.draw_status(True)
 
         option = self._options[self._current_option]
         title = option["title"]
@@ -457,8 +465,9 @@ class EditView(ChannelView):
         text = option["format"](value)
         mode = option.get("mode", "int")
         self._draw.text((3, 43), f"{title} : {text}", font=font, fill=(0, 0, 0))
+        help = option.get("help", "")
 
-        self.draw_next_button(True)
+        self.draw_status(True)
 
         if self._change_mode:
             self.label("Y", "Yes" if mode == "bool" else "++", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
@@ -467,12 +476,20 @@ class EditView(ChannelView):
             self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
             self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
 
+        self.label("A", "?", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+
         self.label("X", "Done", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
 
+        if self._help_mode:
+            self.overlay(help)
+
     def button_a(self):
-        pass
+        self._help_mode = not self._help_mode
+        return True
 
     def button_b(self):
+        if self._help_mode:
+            return True
         if self._change_mode:
             option = self._options[self._current_option]
             prop = option["prop"]
@@ -497,9 +514,12 @@ class EditView(ChannelView):
         if self._change_mode:
             self._change_mode = False
             return True
+        self._help_mode = False
         return False
 
     def button_y(self):
+        if self._help_mode:
+            return True
         if self._change_mode:
             option = self._options[self._current_option]
             prop = option["prop"]
