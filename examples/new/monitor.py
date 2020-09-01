@@ -68,7 +68,15 @@ class View:
     def render(self, canvas):
         pass
 
-    def label(self, canvas, position="X", text="", bgcolor=(0, 0, 0), textcolor=(255, 255, 255), margin=4):
+    def label(
+        self,
+        canvas,
+        position="X",
+        text="",
+        bgcolor=(0, 0, 0),
+        textcolor=(255, 255, 255),
+        margin=4,
+    ):
         if position not in ["A", "B", "X", "Y"]:
             raise ValueError(f"Invalid label position {position}")
 
@@ -90,12 +98,7 @@ class View:
         x2, y2 = x + text_w, y + text_h
 
         draw.rectangle((x, y, x2, y2), bgcolor)
-        draw.text(
-            (x + margin, y + margin - 1),
-            text,
-            font=font,
-            fill=textcolor
-        )
+        draw.text((x + margin, y + margin - 1), text, font=font, fill=textcolor)
 
 
 class MainView(View):
@@ -120,9 +123,10 @@ class MainView(View):
 
         # Channel selection icons
         x += 15
+        col = channel.indicator_color(saturation, channel.label_colours)
         draw.rectangle(
             (x, 2, x + 15, 17),
-            channel.indicator_color(saturation, channel.label_colours) if active else (129, 129, 129),
+            col if active else (129, 129, 129),
         )
 
         # TODO: replace number text with graphic
@@ -131,7 +135,7 @@ class MainView(View):
             (x + int(math.ceil(8 - (tw / 2.0))), 2),
             "{}".format(channel.channel),
             font=font,
-            fill=(255, 255, 255),
+            fill=(255, 255, 255) if active else (200, 200, 200),
         )
 
     def render(self, canvas):
@@ -170,10 +174,7 @@ class DetailView(View):
 
         graph_height = DISPLAY_HEIGHT - 20
 
-        draw.rectangle((
-            0, 20,
-            DISPLAY_WIDTH, DISPLAY_HEIGHT
-        ), (60, 60, 60))
+        draw.rectangle((0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), (60, 60, 60))
 
         offset_x = 20
         offset_y = 20
@@ -184,8 +185,24 @@ class DetailView(View):
             draw.rectangle((x, DISPLAY_HEIGHT - h, x + 1, DISPLAY_HEIGHT), color)
 
         alarm_line = self.channel.alarm_level * graph_height
-        draw.rectangle((0, DISPLAY_HEIGHT - alarm_line, DISPLAY_WIDTH, DISPLAY_HEIGHT - alarm_line + 1), (255, 0, 0))
-        draw.rectangle((DISPLAY_WIDTH - 50, DISPLAY_HEIGHT - alarm_line - 16, DISPLAY_WIDTH, DISPLAY_HEIGHT - alarm_line + 1), (255, 0, 0))
+        draw.rectangle(
+            (
+                0,
+                DISPLAY_HEIGHT - alarm_line,
+                DISPLAY_WIDTH,
+                DISPLAY_HEIGHT - alarm_line + 1,
+            ),
+            (255, 0, 0),
+        )
+        draw.rectangle(
+            (
+                DISPLAY_WIDTH - 50,
+                DISPLAY_HEIGHT - alarm_line - 16,
+                DISPLAY_WIDTH,
+                DISPLAY_HEIGHT - alarm_line + 1,
+            ),
+            (255, 0, 0),
+        )
 
         draw.text(
             (DISPLAY_WIDTH - 47, DISPLAY_HEIGHT - alarm_line - 15),
@@ -207,9 +224,36 @@ class DetailView(View):
 class EditView(View):
     def __init__(self, channel=None):
         self._options = [
-                {"title": "Alarm Level", "prop": "alarm_level", "inc": 0.05, "min": 0, "max": 1.0, "scale": 100, "format": "{value:0.2f}%"},
-                {"title": "Wet Point", "prop": "wet_point", "inc": 0.5, "min": 1, "max": 27, "scale": 1, "format": "{value:0.2f}Hz"},
-                {"title": "Dry Point", "prop": "dry_point", "inc": 0.5, "min": 1, "max": 27, "scale": 1,  "format": "{value:0.2f}Hz"},
+            {
+                "title": "Alarm Level",
+                "prop": "alarm_level",
+                "inc": 0.05,
+                "min": 0,
+                "max": 1.0,
+                "format": lambda value: f"{value * 100:0.2f}%",
+            },
+            {
+                "title": "Enabled",
+                "prop": "enabled",
+                "mode": "bool",
+                "format": lambda value: "Yes" if value else "No"
+            },
+            {
+                "title": "Wet Point",
+                "prop": "wet_point",
+                "inc": 0.5,
+                "min": 1,
+                "max": 27,
+                "format": lambda value: f"{value:0.2f}Hz",
+            },
+            {
+                "title": "Dry Point",
+                "prop": "dry_point",
+                "inc": 0.5,
+                "min": 1,
+                "max": 27,
+                "format": lambda value: f"{value:0.2f}Hz",
+            },
         ]
         self._current_option = 0
         self._change_mode = False
@@ -221,45 +265,35 @@ class EditView(View):
         width, height = canvas.size
         draw.rectangle((0, 0, width, height), (255, 255, 255))
 
-        draw.text(
-            (23, 3),
-            "{}".format(self.channel.title),
-            font=font,
-            fill=(0, 0, 0)
-        )
-
+        draw.text((23, 3), "{}".format(self.channel.title), font=font, fill=(0, 0, 0))
 
         draw.text(
             (5, 25),
             f"Now: {self.channel.sensor.saturation * 100:.2f}% {self.channel.sensor.moisture:.2f}Hz",
             font=font,
-            fill=(0, 0, 0)
+            fill=(0, 0, 0),
         )
 
         option = self._options[self._current_option]
         title = option["title"]
         prop = option["prop"]
         value = getattr(self.channel, prop)
-        scale = option["scale"]
-        text = option["format"].format(value=value * scale)
-        draw.text(
-            (5, 40),
-            f"{title} : {text}",
-            font=font,
-            fill=(0, 0, 0)
-        )
+        text = option["format"](value)
+        mode = option.get("mode", "int")
+        draw.text((5, 40), f"{title} : {text}", font=font, fill=(0, 0, 0))
 
         draw.rectangle((0, 0, 19, 19), (138, 138, 138))
 
         # Icons
         icon(image, icon_rightarrow, (0, 0), (255, 255, 255))
 
-
         if self._change_mode:
-            self.label(canvas, "Y", "++", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
-            self.label(canvas, "B", "--", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+            self.label(canvas, "Y", "Yes" if mode == "bool" else "++", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
+            self.label(canvas, "B", "No" if mode == "bool" else "--", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
         else:
-            self.label(canvas, "Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
+            self.label(
+                canvas, "Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW
+            )
             self.label(canvas, "B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
 
         self.label(canvas, "X", "Done", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
@@ -271,12 +305,17 @@ class EditView(View):
         if self._change_mode:
             option = self._options[self._current_option]
             prop = option["prop"]
-            inc = option["inc"]
-            limit = option["min"]
+            mode = option.get("mode", "int")
+
             value = getattr(self.channel, prop)
-            value -= inc
-            if value < limit:
-                value = limit
+            if mode == "bool":
+                value = False
+            else:
+                inc = option["inc"]
+                limit = option["min"]
+                value -= inc
+                if value < limit:
+                    value = limit
             setattr(self.channel, prop, value)
         else:
             self._current_option += 1
@@ -292,12 +331,17 @@ class EditView(View):
         if self._change_mode:
             option = self._options[self._current_option]
             prop = option["prop"]
-            inc = option["inc"]
-            limit = option["max"]
+            mode = option.get("mode", "int")
+
             value = getattr(self.channel, prop)
-            value += inc
-            if value > limit:
-                value = limit
+            if mode == "bool":
+                value = True
+            else:
+                inc = option["inc"]
+                limit = option["max"]
+                value += inc
+                if value > limit:
+                    value = limit
             setattr(self.channel, prop, value)
         else:
             self._change_mode = True
@@ -350,7 +394,7 @@ class Channel:
         self.icon = icon
         self.enabled = enabled
         self.alarm = False
-        self.title = "Channel {}".format(display_channel) if title is None else title
+        self.title = f"Channel {display_channel}" if title is None else title
 
         self.sensor.set_wet_point(wet_point)
         self.sensor.set_dry_point(dry_point)
@@ -455,10 +499,24 @@ class Alarm:
             if self._sleep_until > time.time():
                 return
 
-        if self.enabled and self._triggered and time.time() - self._time_last_beep > self.interval:
+        if (
+            self.enabled
+            and self._triggered
+            and time.time() - self._time_last_beep > self.interval
+        ):
             self.piezo.beep(self.beep_frequency, 0.1, blocking=False)
-            threading.Timer(0.3, self.piezo.beep, args=[self.beep_frequency, 0.1], kwargs={"blocking":False}).start()
-            threading.Timer(0.6, self.piezo.beep, args=[self.beep_frequency, 0.1], kwargs={"blocking":False}).start()
+            threading.Timer(
+                0.3,
+                self.piezo.beep,
+                args=[self.beep_frequency, 0.1],
+                kwargs={"blocking": False},
+            ).start()
+            threading.Timer(
+                0.6,
+                self.piezo.beep,
+                args=[self.beep_frequency, 0.1],
+                kwargs={"blocking": False},
+            ).start()
             self._time_last_beep = time.time()
 
     def render(self, canvas, position=(0, 0)):
@@ -488,7 +546,7 @@ class Alarm:
         self._sleep_until = time.time() + duration
 
 
-class ViewController():
+class ViewController:
     def __init__(self, views):
         self.views = views
         self._current_view = 0
@@ -545,7 +603,7 @@ def handle_button(pin):
 
     if label == "A":  # Select View
         viewcontroller.button_a()
- 
+
     if label == "B":  # Sleep Alarm
         if not viewcontroller.button_b():
             alarm.sleep()
@@ -576,12 +634,14 @@ channels = [
     Channel(3, 3, 3),
 ]
 
-viewcontroller = ViewController([
-    MainView(channels=channels),
-    (DetailView(channel=channels[0]), EditView(channel=channels[0])),
-    (DetailView(channel=channels[1]), EditView(channel=channels[1])),
-    (DetailView(channel=channels[2]), EditView(channel=channels[2]))
-])
+viewcontroller = ViewController(
+    [
+        MainView(channels=channels),
+        (DetailView(channel=channels[0]), EditView(channel=channels[0])),
+        (DetailView(channel=channels[1]), EditView(channel=channels[1])),
+        (DetailView(channel=channels[2]), EditView(channel=channels[2])),
+    ]
+)
 
 alarm = Alarm()
 
