@@ -24,6 +24,13 @@ LABELS = ["A", "B", "X", "Y"]
 DISPLAY_WIDTH = 160
 DISPLAY_HEIGHT = 80
 
+COLOR_WHITE = (255, 255, 255)
+COLOR_BLUE = (32, 137, 251)
+COLOR_GREEN = (100, 255, 124)
+COLOR_YELLOW = (254, 219, 82)
+COLOR_RED = (254, 82, 82)
+
+
 # Only the ALPHA channel is used from these images
 icon_drop = Image.open("../icons/icon-drop.png")
 icon_nodrop = Image.open("../icons/icon-nodrop.png")
@@ -44,16 +51,16 @@ class View:
         pass
 
     def button_a(self):
-        pass
+        return False
 
     def button_b(self):
-        pass
+        return False
 
     def button_x(self):
-        pass
+        return False
 
     def button_y(self):
-        pass
+        return False
 
     def update(self):
         pass
@@ -61,11 +68,71 @@ class View:
     def render(self, canvas):
         pass
 
+    def label(self, canvas, position="X", text="", bgcolor=(0, 0, 0), textcolor=(255, 255, 255), margin=4):
+        if position not in ["A", "B", "X", "Y"]:
+            raise ValueError(f"Invalid label position {position}")
+
+        draw = ImageDraw.Draw(canvas)
+        text_w, text_h = draw.textsize(text, font=font)
+        text_h = 11
+        text_w += margin * 2
+        text_h += margin * 2
+
+        if position == "A":
+            x, y = 0, 0
+        if position == "B":
+            x, y = 0, DISPLAY_HEIGHT - text_h
+        if position == "X":
+            x, y = DISPLAY_WIDTH - text_w, 0
+        if position == "Y":
+            x, y = DISPLAY_WIDTH - text_w, DISPLAY_HEIGHT - text_h
+
+        x2, y2 = x + text_w, y + text_h
+
+        draw.rectangle((x, y, x2, y2), bgcolor)
+        draw.text(
+            (x + margin, y + margin - 1),
+            text,
+            font=font,
+            fill=textcolor
+        )
+
 
 class MainView(View):
     def __init__(self, channels=None):
         self.channels = channels
         View.__init__(self)
+
+    def render_channel(self, canvas, channel, font):
+        draw = ImageDraw.Draw(image)
+        x = [21, 61, 101][channel.channel - 1]
+
+        # Saturation amounts from each sensor
+        saturation = channel.sensor.saturation
+        active = channel.sensor.active and channel.enabled
+
+        if active:
+            # Draw background bars
+            draw.rectangle(
+                (x, int((1.0 - saturation) * HEIGHT), x + 37, HEIGHT),
+                channel.indicator_color(saturation) if active else (229, 229, 229),
+            )
+
+        # Channel selection icons
+        x += 15
+        draw.rectangle(
+            (x, 2, x + 15, 17),
+            channel.indicator_color(saturation, channel.label_colours) if active else (129, 129, 129),
+        )
+
+        # TODO: replace number text with graphic
+        tw, th = font.getsize("{}".format(channel.channel))
+        draw.text(
+            (x + int(math.ceil(8 - (tw / 2.0))), 2),
+            "{}".format(channel.channel),
+            font=font,
+            fill=(255, 255, 255),
+        )
 
     def render(self, canvas):
         draw = ImageDraw.Draw(canvas)
@@ -73,7 +140,7 @@ class MainView(View):
         draw.rectangle((0, 0, width, height), (255, 255, 255))
 
         for channel in self.channels:
-            channel.render(image, font)
+            self.render_channel(canvas, channel, font)
 
         # Icon backdrops
         draw.rectangle((0, 0, 19, 19), (32, 138, 251))
@@ -94,26 +161,58 @@ class DetailView(View):
         width, height = canvas.size
         draw.rectangle((0, 0, width, height), (255, 255, 255))
 
-        self.channel.render_detail(canvas, font)
+        draw.text(
+            (23, 3),
+            "{}".format(self.channel.title),
+            font=font,
+            fill=(0, 0, 0),
+        )
+
+        graph_height = DISPLAY_HEIGHT - 20
+
+        draw.rectangle((
+            0, 20,
+            DISPLAY_WIDTH, DISPLAY_HEIGHT
+        ), (60, 60, 60))
+
+        offset_x = 20
+        offset_y = 20
+
+        for x, value in enumerate(self.channel.sensor.history[:DISPLAY_WIDTH]):
+            color = self.channel.indicator_color(value)
+            h = value * graph_height
+            draw.rectangle((x, DISPLAY_HEIGHT - h, x + 1, DISPLAY_HEIGHT), color)
+
+        alarm_line = self.channel.alarm_level * graph_height
+        draw.rectangle((0, DISPLAY_HEIGHT - alarm_line, DISPLAY_WIDTH, DISPLAY_HEIGHT - alarm_line + 1), (255, 0, 0))
+        draw.rectangle((DISPLAY_WIDTH - 50, DISPLAY_HEIGHT - alarm_line - 16, DISPLAY_WIDTH, DISPLAY_HEIGHT - alarm_line + 1), (255, 0, 0))
+
+        draw.text(
+            (DISPLAY_WIDTH - 47, DISPLAY_HEIGHT - alarm_line - 15),
+            "Alarm",
+            font=font,
+            fill=(255, 255, 255),
+        )
 
         # Icon backdrops
         draw.rectangle((0, 0, 19, 19), (32, 138, 251))
-        draw.rectangle((DISPLAY_WIDTH - 30, 0, DISPLAY_WIDTH, 19), (75, 166, 252))
 
         # Icons
         icon(image, icon_rightarrow, (0, 0), (255, 255, 255))
 
         # Edit
-        draw.text(
-            (DISPLAY_WIDTH - 28, 3),
-            "Edit",
-            font=font,
-            fill=(255, 255, 255),
-        )
+        self.label(canvas, "X", "Edit", textcolor=(255, 255, 255), bgcolor=COLOR_RED)
 
 
 class EditView(View):
     def __init__(self, channel=None):
+        self._options = [
+                {"title": "Alarm Level", "prop": "alarm_level", "inc": 0.05, "min": 0, "max": 1.0, "scale": 100, "format": "{value:0.2f}%"},
+                {"title": "Wet Point", "prop": "wet_point", "inc": 0.5, "min": 1, "max": 27, "scale": 1, "format": "{value:0.2f}Hz"},
+                {"title": "Dry Point", "prop": "dry_point", "inc": 0.5, "min": 1, "max": 27, "scale": 1,  "format": "{value:0.2f}Hz"},
+        ]
+        self._current_option = 0
+        self._change_mode = False
         self.channel = channel
         View.__init__(self)
 
@@ -122,39 +221,86 @@ class EditView(View):
         width, height = canvas.size
         draw.rectangle((0, 0, width, height), (255, 255, 255))
 
-        self.channel.render_edit(canvas, font)
+        draw.text(
+            (23, 3),
+            "{}".format(self.channel.title),
+            font=font,
+            fill=(0, 0, 0)
+        )
 
-        # Icon backdrops
+
+        draw.text(
+            (5, 25),
+            f"Now: {self.channel.sensor.saturation * 100:.2f}% {self.channel.sensor.moisture:.2f}Hz",
+            font=font,
+            fill=(0, 0, 0)
+        )
+
+        option = self._options[self._current_option]
+        title = option["title"]
+        prop = option["prop"]
+        value = getattr(self.channel, prop)
+        scale = option["scale"]
+        text = option["format"].format(value=value * scale)
+        draw.text(
+            (5, 40),
+            f"{title} : {text}",
+            font=font,
+            fill=(0, 0, 0)
+        )
+
         draw.rectangle((0, 0, 19, 19), (138, 138, 138))
-        draw.rectangle((DISPLAY_WIDTH - 38, 0, DISPLAY_WIDTH, 19), (75, 166, 252))
-
-        draw.rectangle((0, DISPLAY_HEIGHT - 19, 60, DISPLAY_WIDTH), (32, 137, 251))
-        draw.rectangle((DISPLAY_WIDTH - 60, DISPLAY_HEIGHT - 19, DISPLAY_WIDTH, DISPLAY_HEIGHT), (254, 219, 82))
 
         # Icons
         icon(image, icon_rightarrow, (0, 0), (255, 255, 255))
 
-        # Edit
-        draw.text(
-            (DISPLAY_WIDTH - 36, 3),
-            "Done",
-            font=font,
-            fill=(255, 255, 255)
-        )
 
-        draw.text(
-            (0, HEIGHT - 19),
-            "Set Wet",
-            font=font,
-            fill=(255, 255, 255)
-        )
+        if self._change_mode:
+            self.label(canvas, "Y", "++", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
+            self.label(canvas, "B", "--", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+        else:
+            self.label(canvas, "Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
+            self.label(canvas, "B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
 
-        draw.text(
-            (DISPLAY_WIDTH - 60, HEIGHT - 19),
-            "Set Dry",
-            font=font,
-            fill=(255, 255, 255)
-        )
+        self.label(canvas, "X", "Done", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
+
+    def button_a(self):
+        pass
+
+    def button_b(self):
+        if self._change_mode:
+            option = self._options[self._current_option]
+            prop = option["prop"]
+            inc = option["inc"]
+            limit = option["min"]
+            value = getattr(self.channel, prop)
+            value -= inc
+            if value < limit:
+                value = limit
+            setattr(self.channel, prop, value)
+        else:
+            self._current_option += 1
+            self._current_option %= len(self._options)
+
+    def button_x(self):
+        if self._change_mode:
+            self._change_mode = False
+            return True
+        return False
+
+    def button_y(self):
+        if self._change_mode:
+            option = self._options[self._current_option]
+            prop = option["prop"]
+            inc = option["inc"]
+            limit = option["max"]
+            value = getattr(self.channel, prop)
+            value += inc
+            if value > limit:
+                value = limit
+            setattr(self.channel, prop, value)
+        else:
+            self._change_mode = True
 
 
 class Channel:
@@ -166,10 +312,10 @@ class Channel:
     ]
 
     label_colours = [
-        (32, 137, 251),  # Blue
-        (100, 255, 124),  # Green
-        (254, 219, 82),  # Yellow
-        (254, 82, 82),  # Red
+        COLOR_BLUE,
+        COLOR_GREEN,
+        COLOR_YELLOW,
+        COLOR_RED,
     ]
 
     def __init__(
@@ -239,9 +385,6 @@ class Channel:
             self.enabled = config.get("enabled", self.enabled)
             self.wet_point = config.get("wet_point", self.wet_point)
             self.dry_point = config.get("dry_point", self.dry_point)
-            # icon = config.get("icon", None)
-            # if icon is not None:
-            #    self.icon = Image.open(icon)
 
         pass
 
@@ -269,86 +412,8 @@ Dry point: {dry_point}
             return True
         return False
 
-    def render_edit(self, image, font):
-        draw = ImageDraw.Draw(image)
-        draw.text(
-            (23, 3),
-            "{}".format(self.title),
-            font=font,
-            fill=(0, 0, 0)
-        )
-        draw.text(
-            (5, 30),
-            "Sat: {:.2f}%".format(self.sensor.saturation * 100),
-            font=font,
-            fill=(0, 0, 0)
-        )
-
-    def render_detail(self, image, font):
-        draw = ImageDraw.Draw(image)
-        draw.text(
-            (23, 3),
-            "{}".format(self.title),
-            font=font,
-            fill=(0, 0, 0),
-        )
-
-        graph_height = DISPLAY_HEIGHT - 20
-
-        draw.rectangle((
-            0, 20,
-            DISPLAY_WIDTH, DISPLAY_HEIGHT
-        ), (60, 60, 60))
-
-        offset_x = 20
-        offset_y = 20
-
-        for x, value in enumerate(self.sensor.history[:DISPLAY_WIDTH]):
-            color = self.indicator_color(value)
-            h = value * graph_height
-            draw.rectangle((x, DISPLAY_HEIGHT - h, x + 1, DISPLAY_HEIGHT), color)
-
-        alarm_line = self.alarm_level * graph_height
-        draw.rectangle((0, DISPLAY_HEIGHT - alarm_line, DISPLAY_WIDTH, DISPLAY_HEIGHT - alarm_line + 1), (255, 0, 0))
-        draw.rectangle((DISPLAY_WIDTH - 50, DISPLAY_HEIGHT - alarm_line - 16, DISPLAY_WIDTH, DISPLAY_HEIGHT - alarm_line + 1), (255, 0, 0))
-
-        draw.text(
-            (DISPLAY_WIDTH - 47, DISPLAY_HEIGHT - alarm_line - 15),
-            "Alarm",
-            font=font,
-            fill=(255, 255, 255),
-        )
-
     def render(self, image, font):
-        draw = ImageDraw.Draw(image)
-        x = [21, 61, 101][self.channel - 1]
-
-        # Saturation amounts from each sensor
-        saturation = self.sensor.saturation
-        active = self.sensor.active and self.enabled
-
-        if active:
-            # Draw background bars
-            draw.rectangle(
-                (x, int((1.0 - saturation) * HEIGHT), x + 37, HEIGHT),
-                self.indicator_color(saturation) if active else (229, 229, 229),
-            )
-
-        # Channel selection icons
-        x += 15
-        draw.rectangle(
-            (x, 2, x + 15, 17),
-            self.indicator_color(saturation, self.label_colours) if active else (129, 129, 129),
-        )
-
-        # TODO: replace number text with graphic
-        tw, th = font.getsize("{}".format(self.channel))
-        draw.text(
-            (x + int(math.ceil(8 - (tw / 2.0))), 2),
-            "{}".format(self.channel),
-            font=font,
-            fill=(255, 255, 255),
-        )
+        pass
 
     def update(self):
         if not self.enabled:
@@ -423,30 +488,73 @@ class Alarm:
         self._sleep_until = time.time() + duration
 
 
+class ViewController():
+    def __init__(self, views):
+        self.views = views
+        self._current_view = 0
+        self._current_subview = 0
+
+    def next_subview(self):
+        view = self.views[self._current_view]
+        if isinstance(view, tuple):
+            self._current_subview += 1
+            self._current_subview %= len(view)
+
+    def next_view(self):
+        if self._current_subview == 0:
+            self._current_view += 1
+            self._current_view %= len(self.views)
+            self._current_subview = 0
+            print(f"Switched to view {self._current_view}")
+
+    def get_current_view(self):
+        view = self.views[self._current_view]
+        if isinstance(view, tuple):
+            view = view[self._current_subview]
+
+        return view
+
+    @property
+    def view(self):
+        return self.get_current_view()
+
+    def update(self):
+        self.view.update()
+
+    def render(self, canvas):
+        self.view.render(canvas)
+
+    def button_a(self):
+        if not self.view.button_a():
+            self.next_view()
+
+    def button_b(self):
+        self.view.button_b()
+
+    def button_x(self):
+        if not self.view.button_x():
+            self.next_subview()
+
+    def button_y(self):
+        self.view.button_y()
+
+
 def handle_button(pin):
-    global current_view, current_subview
     index = BUTTONS.index(pin)
     label = LABELS[index]
 
     if label == "A":  # Select View
-        if current_subview == 0:
-            current_view += 1
-            current_view %= len(views)
-            current_subview = 0
-            print("Switched to view {}".format(current_view))
-
+        viewcontroller.button_a()
+ 
     if label == "B":  # Sleep Alarm
-        alarm.sleep()
+        if not viewcontroller.button_b():
+            alarm.sleep()
 
     if label == "X":
-        view = views[current_view]
-        if isinstance(view, tuple):
-            current_subview += 1
-            current_subview %= len(view)
-            print("Switched to subview {}".format(current_subview))
+        viewcontroller.button_x()
 
     if label == "Y":
-        pass
+        viewcontroller.button_y()
 
 
 # Set up the ST7735 SPI Display
@@ -468,15 +576,12 @@ channels = [
     Channel(3, 3, 3),
 ]
 
-current_view = 0
-current_subview = 0
-
-views = [
+viewcontroller = ViewController([
     MainView(channels=channels),
     (DetailView(channel=channels[0]), EditView(channel=channels[0])),
     (DetailView(channel=channels[1]), EditView(channel=channels[1])),
     (DetailView(channel=channels[2]), EditView(channel=channels[2]))
-]
+])
 
 alarm = Alarm()
 
@@ -532,14 +637,9 @@ Alarm Interval: {:.2f}s
 
         alarm.update()
 
-        view = views[current_view]
-        if isinstance(view, tuple):
-            view = view[current_subview]
-        view.update()
-        view.render(image)
+        viewcontroller.update()
+        viewcontroller.render(image)
         display.display(image.convert("RGB"))
-
-
 
         # 5 FPS
         time.sleep(1.0 / 10)
