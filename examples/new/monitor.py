@@ -306,6 +306,8 @@ class EditView(View):
                 inc = option["inc"]
                 limit = option["min"]
                 value -= inc
+                if mode == "float":
+                    value = round(value, option.get("round", 1))
                 if value < limit:
                     value = limit
             setattr(object, prop, value)
@@ -337,6 +339,8 @@ class EditView(View):
                 inc = option["inc"]
                 limit = option["max"]
                 value += inc
+                if mode == "float":
+                    value = round(value, option.get("round", 1))
                 if value > limit:
                     value = limit
             setattr(object, prop, value)
@@ -459,6 +463,7 @@ class ChannelEditView(ChannelView, EditView):
                 "inc": 0.05,
                 "min": 0,
                 "max": 1.0,
+                "mode": "float",
                 "format": lambda value: f"{value * 100:0.2f}%",
                 "help": "Saturation at which alarm is triggered",
             },
@@ -475,6 +480,7 @@ class ChannelEditView(ChannelView, EditView):
                 "inc": 0.5,
                 "min": 1,
                 "max": 27,
+                "mode": "float",
                 "format": lambda value: f"{value:0.2f}Hz",
                 "help": "Frequency for fully saturated soil",
             },
@@ -484,6 +490,7 @@ class ChannelEditView(ChannelView, EditView):
                 "inc": 0.5,
                 "min": 1,
                 "max": 27,
+                "mode": "float",
                 "format": lambda value: f"{value:0.2f}Hz",
                 "help": "Frequency for fully dried soil",
             },
