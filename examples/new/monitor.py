@@ -40,14 +40,14 @@ icon_nodrop = Image.open("../icons/icon-nodrop.png")
 icon_rightarrow = Image.open("../icons/icon-rightarrow.png")
 icon_snooze = Image.open("../icons/icon-snooze.png")
 
-alarm = False
-alarm_enable = True
-
 
 class View:
     def __init__(self, image):
         self._image = image
         self._draw = ImageDraw.Draw(image)
+
+        self.font = ImageFont.truetype(UserFont, 14)
+        self.font_small = ImageFont.truetype(UserFont, 10)
 
     def button_a(self):
         return False
@@ -85,7 +85,7 @@ class View:
         if position not in ["A", "B", "X", "Y"]:
             raise ValueError(f"Invalid label position {position}")
 
-        text_w, text_h = self._draw.textsize(text, font=font)
+        text_w, text_h = self._draw.textsize(text, font=self.font)
         text_h = 11
         text_w += margin * 2
         text_h += margin * 2
@@ -102,26 +102,22 @@ class View:
         x2, y2 = x + text_w, y + text_h
 
         self._draw.rectangle((x, y, x2, y2), bgcolor)
-        self._draw.text((x + margin, y + margin - 1), text, font=font, fill=textcolor)
+        self._draw.text((x + margin, y + margin - 1), text, font=self.font, fill=textcolor)
 
     def overlay(self, text):
-        """Draw a slightly transparent overlay with some text."""
-        overlay = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
-        draw.rectangle(
-            (0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254, 240)
+        """Draw an overlay with some auto-sized text."""
+        self._draw.rectangle(
+            (0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254)
         )  # Overlay backdrop
-        draw.rectangle((0, 20, DISPLAY_WIDTH, 21), fill=COLOR_BLUE)  # Top border
+        self._draw.rectangle((0, 20, DISPLAY_WIDTH, 21), fill=COLOR_BLUE)  # Top border
         self.text_in_rect(
-            draw,
             text,
-            font,
+            self.font,
             (3, 20, DISPLAY_WIDTH - 3, DISPLAY_HEIGHT - 2),
             line_spacing=1,
         )
-        self._image.paste(Image.alpha_composite(self._image, overlay), (0, 0))
 
-    def text_in_rect(self, canvas, text, font, rect, line_spacing=1.1, textcolor=(0, 0, 0)):
+    def text_in_rect(self, text, font, rect, line_spacing=1.1, textcolor=(0, 0, 0)):
         x1, y1, x2, y2 = rect
         width = x2 - x1
         height = y2 - y1
@@ -162,7 +158,7 @@ class View:
                     x = int(x1 + (width / 2) - (line_width / 2))
                     bounds[0] = min(bounds[0], x)
                     bounds[2] = max(bounds[2], x + line_width)
-                    canvas.text((x, y), line, font=font, fill=textcolor)
+                    self._draw.text((x, y), line, font=self.font, fill=textcolor)
                     y += line_height
 
                 return tuple(bounds)
@@ -171,18 +167,24 @@ class View:
 
 
 class MainView(View):
-    def __init__(self, image, channels=None):
+    """Main overview.
 
+    Displays three channels and alarm indicator/snooze.
+
+    """
+    def __init__(self, image, channels=None, alarm=None):
         self.channels = channels
+        self.alarm = alarm
+
         View.__init__(self, image)
 
-    def render_channel(self, channel, font):
+    def render_channel(self, channel):
         x = [21, 61, 101][channel.channel - 1]
 
         # Saturation amounts from each sensor
         saturation = channel.sensor.saturation
         active = channel.sensor.active and channel.enabled
-        alarm_level = channel.alarm_level
+        warn_level = channel.warn_level
 
         self._draw.rectangle((x, 0, x + 37, DISPLAY_HEIGHT), (230, 230, 230))
 
@@ -193,7 +195,7 @@ class MainView(View):
                 channel.indicator_color(saturation) if active else (229, 229, 229),
             )
 
-        y = int((1.0 - alarm_level) * DISPLAY_HEIGHT)
+        y = int((1.0 - warn_level) * DISPLAY_HEIGHT)
         self._draw.rectangle(
             (x, y, x + 37, y), (255, 0, 0) if channel.alarm else (0, 0, 0)
         )
@@ -210,11 +212,11 @@ class MainView(View):
             )
 
         # TODO: replace number text with graphic
-        tw, th = font.getsize("{}".format(channel.channel))
+        tw, th = self.font.getsize("{}".format(channel.channel))
         self._draw.text(
             (x + int(math.ceil(8 - (tw / 2.0))), 2),
             "{}".format(channel.channel),
-            font=font,
+            font=self.font,
             fill=(255, 255, 255) if active else (200, 200, 200),
         )
 
@@ -222,7 +224,7 @@ class MainView(View):
         self.clear()
 
         for channel in self.channels:
-            self.render_channel(channel, font)
+            self.render_channel(channel)
 
         # Icon backdrops
         self._draw.rectangle((0, 0, 19, 19), (32, 138, 251))
@@ -230,13 +232,14 @@ class MainView(View):
         # Icons
         self.icon(icon_rightarrow, (0, 0), (255, 255, 255))
 
-        alarm.render((0, DISPLAY_HEIGHT - 19))
+        self.alarm.render((0, DISPLAY_HEIGHT - 19))
 
         self.label("X", "S", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
         self.label("Y", "BL", textcolor=COLOR_WHITE, bgcolor=COLOR_GREEN)
 
 
 class EditView(View):
+    """Baseclass for a settings edit view."""
     def __init__(self, image, options=[]):
         self._options = options
         self._current_option = 0
@@ -277,7 +280,7 @@ class EditView(View):
 
         self.label("A", "?", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
 
-        self._draw.text((3, 43), f"{title} : {text}", font=font, fill=(0, 0, 0))
+        self._draw.text((3, 43), f"{title} : {text}", font=self.font, fill=(0, 0, 0))
 
         if self._help_mode:
             self.overlay(help)
@@ -309,6 +312,7 @@ class EditView(View):
         else:
             self._current_option += 1
             self._current_option %= len(self._options)
+
         return True
 
     def button_x(self):
@@ -339,8 +343,11 @@ class EditView(View):
         else:
             self._change_mode = True
 
+        return True
+
 
 class SettingsView(EditView):
+    """Main settings."""
     def __init__(self, image, options=[]):
         EditView.__init__(self, image, options)
 
@@ -349,13 +356,14 @@ class SettingsView(EditView):
         self._draw.text(
             (23, 3),
             "Settings",
-            font=font,
+            font=self.font,
             fill=(0, 0, 0),
         )
         EditView.render(self)
 
 
 class ChannelView(View):
+    """Base class for a view that deals with a specific channel instance."""
     def __init__(self, image, channel=None):
         self.channel = channel
         View.__init__(self, image)
@@ -368,12 +376,17 @@ class ChannelView(View):
         self._draw.text(
             (3, 23),
             status,
-            font=font,
+            font=self.font,
             fill=(150, 150, 150) if subtle else (255, 255, 255),
         )
 
 
 class DetailView(ChannelView):
+    """Single channel details.
+
+    Draw the channel graph and status line.
+
+    """
     def render(self):
         width, height = self._image.size
         self._draw.rectangle((0, 0, width, height), (255, 255, 255))
@@ -381,7 +394,7 @@ class DetailView(ChannelView):
         self._draw.text(
             (23, 3),
             "{}".format(self.channel.title),
-            font=font,
+            font=self.font,
             fill=(0, 0, 0),
         )
 
@@ -399,7 +412,7 @@ class DetailView(ChannelView):
             x = DISPLAY_WIDTH - x - 1
             self._draw.rectangle((x, DISPLAY_HEIGHT - h, x + 1, DISPLAY_HEIGHT), color)
 
-        alarm_line = int(self.channel.alarm_level * graph_height)
+        alarm_line = int(self.channel.warn_level * graph_height)
         r = 255
         if self.channel.alarm:
             r = int(((math.sin(time.time() * 3 * math.pi) + 1.0) / 2.0) * 128) + 127
@@ -437,11 +450,12 @@ class DetailView(ChannelView):
 
 
 class ChannelEditView(ChannelView, EditView):
+    """Single channel edit."""
     def __init__(self, image, channel=None):
         options = [
             {
                 "title": "Alarm Level",
-                "prop": "alarm_level",
+                "prop": "warn_level",
                 "inc": 0.05,
                 "min": 0,
                 "max": 1.0,
@@ -481,12 +495,13 @@ class ChannelEditView(ChannelView, EditView):
         self.clear()
 
         self._draw.text(
-            (23, 3), "{}".format(self.channel.title), font=font, fill=(0, 0, 0)
+            (23, 3), "{}".format(self.channel.title), font=self.font, fill=(0, 0, 0)
         )
 
         EditView.render(self)
 
-        self.draw_status(True)
+        if not self._help_mode:
+            self.draw_status(True)
 
 
 class Channel:
@@ -511,7 +526,7 @@ class Channel:
         pump_channel,
         title=None,
         water_level=0.5,
-        alarm_level=0.5,
+        warn_level=0.5,
         pump_speed=0.7,
         pump_time=0.7,
         watering_delay=30,
@@ -525,7 +540,7 @@ class Channel:
         self.sensor = Moisture(sensor_channel)
         self.pump = Pump(pump_channel)
         self.water_level = water_level
-        self.alarm_level = alarm_level
+        self.warn_level = warn_level
         self.auto_water = auto_water
         self.pump_speed = pump_speed
         self.pump_time = pump_time
@@ -590,7 +605,7 @@ class Channel:
         if config is not None:
             self.pump_speed = config.get("pump_speed", self.pump_speed)
             self.pump_time = config.get("pump_time", self.pump_time)
-            self.alarm_level = config.get("alarm_level", self.alarm_level)
+            self.warn_level = config.get("warn_level", self.warn_level)
             self.water_level = config.get("water_level", self.water_level)
             self.watering_delay = config.get("watering_delay", self.watering_delay)
             self.auto_water = config.get("auto_water", self.auto_water)
@@ -603,7 +618,7 @@ class Channel:
     def __str__(self):
         return """Channel: {channel}
 Enabled: {enabled}
-Alarm level: {alarm_level}
+Alarm level: {warn_level}
 Auto water: {auto_water}
 Water level: {water_level}
 Pump speed: {pump_speed}
@@ -614,7 +629,7 @@ Dry point: {dry_point}
 """.format(
             channel=self.channel,
             enabled=self.enabled,
-            alarm_level=self.alarm_level,
+            warn_level=self.warn_level,
             auto_water=self.auto_water,
             water_level=self.water_level,
             pump_speed=self.pump_speed,
@@ -647,11 +662,11 @@ Dry point: {dry_point}
                         self.channel, self.pump_speed, self.pump_time
                     )
                 )
-        if sat < self.alarm_level:
+        if sat < self.warn_level:
             if not self.alarm:
                 logging.warning(
                     "Alarm on Channel: {} - saturation is {:.2f}% (warn level {:.2f}%)".format(
-                        self.channel, sat * 100, self.alarm_level * 100
+                        self.channel, sat * 100, self.warn_level * 100
                     )
                 )
             self.alarm = True
@@ -713,7 +728,7 @@ class Alarm(View):
 
         if self._sleep_until is not None:  # TODO maybe sleeping alarm icon?
             if self._sleep_until > time.time():
-                self._draw.text((x, y), "zZ", font=font, fill=(255, 255, 255))
+                self._draw.text((x, y), "zZ", font=self.font, fill=(255, 255, 255))
 
     def trigger(self):
         self._triggered = True
@@ -780,57 +795,125 @@ class ViewController:
         return self.view.button_y()
 
 
-def handle_button(pin):
-    global backlight
+class Config:
+    def __init__(self):
+        self.config = None
+        self._last_save = ""
 
-    index = BUTTONS.index(pin)
-    label = LABELS[index]
+        self.channel_settings = [
+            "enabled",
+            "warn_level",
+            "wet_point",
+            "dry_point",
+        ]
 
-    if label == "A":  # Select View
-        viewcontroller.button_a()
+        self.general_settings = [
+            "alarm_enable",
+            "alarm_interval",
+        ]
 
-    if label == "B":  # Sleep Alarm
-        if not viewcontroller.button_b():
-            alarm.sleep()
+    def load(self, settings_file="settings.yml"):
+        if len(sys.argv) > 1:
+            settings_file = sys.argv[1]
 
-    if label == "X":
-        viewcontroller.button_x()
+        settings_file = pathlib.Path(settings_file)
 
-    if label == "Y":
-        if not viewcontroller.button_y():
-            backlight = not backlight
-            display.set_backlight(backlight)
+        if settings_file.is_file():
+            try:
+                self.config = yaml.safe_load(open(settings_file))
+            except yaml.parser.ParserError as e:
+                raise yaml.parser.ParserError(
+                    "Error parsing settings file: {} ({})".format(settings_file, e)
+                )
+
+    def save(self, settings_file="settings.yml"):
+        if len(sys.argv) > 1:
+            settings_file = sys.argv[1]
+
+        settings_file = pathlib.Path(settings_file)
+
+        dump = yaml.dump(self.config)
+
+        if dump == self._last_save:
+            return
+
+        if settings_file.is_file():
+            with open(settings_file, "w") as file:
+                file.write(dump)
+
+        self._last_save = dump
+
+    def get_channel(self, channel_id):
+        return self.config.get("channel{}".format(channel_id), {})
+
+    def set(self, section, settings):
+        if isinstance(settings, dict):
+            self.config[section].update(settings)
+        else:
+            for key in self.channel_settings:
+                value = getattr(settings, key, None)
+                if value is not None:
+                    self.config[section].update({key: value})
+
+    def set_channel(self, channel_id, settings):
+        self.set("channel{}".format(channel_id), settings)
+
+    def get_general(self):
+        return self.config.get("general", {})
+
+    def set_general(self, settings):
+        self.set("general", settings)
 
 
-backlight = True
 
-# Set up the ST7735 SPI Display
-display = ST7735.ST7735(
-    port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=80000000
-)
-display.begin()
-
-# Set up light sensor
-light = ltr559.LTR559()
-
-# Set up our canvas and prepare for drawing
-image = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(255, 255, 255))
-font = ImageFont.truetype(UserFont, 14)
-font_small = ImageFont.truetype(UserFont, 10)
-
-
-# Pick a random selection of plant icons to display on screen
-channels = [
-    Channel(1, 1, 1),
-    Channel(2, 2, 2),
-    Channel(3, 3, 3),
-]
-
-alarm = Alarm(image)
 
 
 def main():
-    global alarm, viewcontroller
+    def handle_button(pin):
+        global backlight
+
+        index = BUTTONS.index(pin)
+        label = LABELS[index]
+
+        if label == "A":  # Select View
+            viewcontroller.button_a()
+
+        if label == "B":  # Sleep Alarm
+            if not viewcontroller.button_b():
+                alarm.sleep()
+
+        if label == "X":
+            viewcontroller.button_x()
+
+        if label == "Y":
+            if not viewcontroller.button_y():
+                backlight = not backlight
+                display.set_backlight(backlight)
+
+    backlight = True
+
+    # Set up the ST7735 SPI Display
+    display = ST7735.ST7735(
+        port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=80000000
+    )
+    display.begin()
+
+    # Set up light sensor
+    light = ltr559.LTR559()
+
+    # Set up our canvas and prepare for drawing
+    image = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(255, 255, 255))
+
+    # Pick a random selection of plant icons to display on screen
+    channels = [
+        Channel(1, 1, 1),
+        Channel(2, 2, 2),
+        Channel(3, 3, 3),
+    ]
+
+    alarm = Alarm(image)
+
+    config = Config()
 
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
@@ -839,25 +922,12 @@ def main():
     for pin in BUTTONS:
         GPIO.add_event_detect(pin, GPIO.FALLING, handle_button, bouncetime=200)
 
-    settings_file = "settings.yml"
-    if len(sys.argv) > 1:
-        settings_file = sys.argv[1]
-    settings_file = pathlib.Path(settings_file)
-    if settings_file.is_file():
-        try:
-            config = yaml.safe_load(open(settings_file))
-        except yaml.parser.ParserError as e:
-            raise yaml.parser.ParserError(
-                "Error parsing settings file: {} ({})".format(settings_file, e)
-            )
+    config.load()
 
-        for channel in channels:
-            ch = config.get("channel{}".format(channel.channel), None)
-            channel.update_from_yml(ch)
+    for channel in channels:
+        channel.update_from_yml(config.get_channel(channel.channel))
 
-        settings = config.get("general", None)
-        if settings is not None:
-            alarm.update_from_yml(settings)
+    alarm.update_from_yml(config.get_general())
 
     print("Channels:")
     for channel in channels:
@@ -896,7 +966,7 @@ Alarm Interval: {:.2f}s
     viewcontroller = ViewController(
         [
             (
-                MainView(image, channels=channels),
+                MainView(image, channels=channels, alarm=alarm),
                 SettingsView(image, options=main_options),
             ),
             (
@@ -916,6 +986,7 @@ Alarm Interval: {:.2f}s
 
     while True:
         for channel in channels:
+            config.set_channel(channel.channel, channel)
             channel.update()
             if channel.alarm:
                 alarm.trigger()
@@ -925,6 +996,13 @@ Alarm Interval: {:.2f}s
         viewcontroller.update()
         viewcontroller.render()
         display.display(image.convert("RGB"))
+
+        config.set_general({
+            "alarm_enable": alarm.enabled,
+            "alarm_interval": alarm.interval,
+        })
+
+        config.save()
 
         time.sleep(1.0 / FPS)
 
