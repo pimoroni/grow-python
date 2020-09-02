@@ -4,12 +4,12 @@ import math
 import pathlib
 import random
 import sys
-import time
 import threading
+import time
 
+import ltr559
 import RPi.GPIO as GPIO
 import ST7735
-import ltr559
 from fonts.ttf import RobotoMedium as UserFont
 from PIL import Image, ImageDraw, ImageFont
 
@@ -102,7 +102,9 @@ class View:
         x2, y2 = x + text_w, y + text_h
 
         self._draw.rectangle((x, y, x2, y2), bgcolor)
-        self._draw.text((x + margin, y + margin - 1), text, font=self.font, fill=textcolor)
+        self._draw.text(
+            (x + margin, y + margin - 1), text, font=self.font, fill=textcolor
+        )
 
     def overlay(self, text):
         """Draw an overlay with some auto-sized text."""
@@ -136,7 +138,8 @@ class View:
                 line = []
 
                 while (
-                    len(words) > 0 and font.getsize(" ".join(line + [words[0]]))[0] <= width
+                    len(words) > 0
+                    and font.getsize(" ".join(line + [words[0]]))[0] <= width
                 ):
                     line.append(words.pop(0))
 
@@ -172,6 +175,7 @@ class MainView(View):
     Displays three channels and alarm indicator/snooze.
 
     """
+
     def __init__(self, image, channels=None, alarm=None):
         self.channels = channels
         self.alarm = alarm
@@ -240,6 +244,7 @@ class MainView(View):
 
 class EditView(View):
     """Baseclass for a settings edit view."""
+
     def __init__(self, image, options=[]):
         self._options = options
         self._current_option = 0
@@ -352,6 +357,7 @@ class EditView(View):
 
 class SettingsView(EditView):
     """Main settings."""
+
     def __init__(self, image, options=[]):
         EditView.__init__(self, image, options)
 
@@ -368,6 +374,7 @@ class SettingsView(EditView):
 
 class ChannelView(View):
     """Base class for a view that deals with a specific channel instance."""
+
     def __init__(self, image, channel=None):
         self.channel = channel
         View.__init__(self, image)
@@ -391,6 +398,7 @@ class DetailView(ChannelView):
     Draw the channel graph and status line.
 
     """
+
     def render(self):
         width, height = self._image.size
         self._draw.rectangle((0, 0, width, height), (255, 255, 255))
@@ -455,6 +463,7 @@ class DetailView(ChannelView):
 
 class ChannelEditView(ChannelView, EditView):
     """Single channel edit."""
+
     def __init__(self, image, channel=None):
         options = [
             {
@@ -872,9 +881,6 @@ class Config:
         self.set("general", settings)
 
 
-
-
-
 def main():
     def handle_button(pin):
         global backlight
@@ -1004,10 +1010,12 @@ Alarm Interval: {:.2f}s
         viewcontroller.render()
         display.display(image.convert("RGB"))
 
-        config.set_general({
-            "alarm_enable": alarm.enabled,
-            "alarm_interval": alarm.interval,
-        })
+        config.set_general(
+            {
+                "alarm_enable": alarm.enabled,
+                "alarm_interval": alarm.interval,
+            }
+        )
 
         config.save()
 
