@@ -44,59 +44,6 @@ alarm = False
 alarm_enable = True
 
 
-def text_in_rect(canvas, text, font, rect, line_spacing=1.1, textcolor=(0, 0, 0)):
-    width = rect[2] - rect[0]
-    height = rect[3] - rect[1]
-
-    # Given a rectangle, reflow and scale text to fit, centred
-    while font.size > 0:
-        space_width = font.getsize(" ")[0]
-        line_height = int(font.size * line_spacing)
-        max_lines = math.floor(height / line_height)
-        lines = []
-
-        # Determine if text can fit at current scale.
-        words = text.split(" ")
-
-        while len(lines) < max_lines and len(words) > 0:
-            line = []
-
-            while (
-                len(words) > 0 and font.getsize(" ".join(line + [words[0]]))[0] <= width
-            ):
-                line.append(words.pop(0))
-
-            lines.append(" ".join(line))
-
-        if len(lines) <= max_lines and len(words) == 0:
-            # Solution is found, render the text.
-            y = int(
-                rect[1]
-                + (height / 2)
-                - (len(lines) * line_height / 2)
-                - (line_height - font.size) / 2
-            )
-
-            bounds = [rect[2], y, rect[0], y + len(lines) * line_height]
-
-            for line in lines:
-                line_width = font.getsize(line)[0]
-                x = int(rect[0] + (width / 2) - (line_width / 2))
-                bounds[0] = min(bounds[0], x)
-                bounds[2] = max(bounds[2], x + line_width)
-                canvas.text((x, y), line, font=font, fill=textcolor)
-                y += line_height
-
-            return tuple(bounds)
-
-        font = ImageFont.truetype(font.path, font.size - 1)
-
-
-def icon(image, icon, position, color):
-    col = Image.new("RGBA", icon.size, color=color)
-    image.paste(col, position, mask=icon)
-
-
 class View:
     def __init__(self, image):
         self._image = image
@@ -119,6 +66,13 @@ class View:
 
     def render(self):
         pass
+
+    def clear(self):
+        self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255))
+
+    def icon(self, icon, position, color):
+        col = Image.new("RGBA", icon.size, color=color)
+        self._image.paste(col, position, mask=icon)
 
     def label(
         self,
@@ -158,7 +112,7 @@ class View:
             (0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254, 240)
         )  # Overlay backdrop
         draw.rectangle((0, 20, DISPLAY_WIDTH, 21), fill=COLOR_BLUE)  # Top border
-        text_in_rect(
+        self.text_in_rect(
             draw,
             text,
             font,
@@ -167,14 +121,57 @@ class View:
         )
         self._image.paste(Image.alpha_composite(self._image, overlay), (0, 0))
 
+    def text_in_rect(self, canvas, text, font, rect, line_spacing=1.1, textcolor=(0, 0, 0)):
+        x1, y1, x2, y2 = rect
+        width = x2 - x1
+        height = y2 - y1
+
+        # Given a rectangle, reflow and scale text to fit, centred
+        while font.size > 0:
+            space_width = font.getsize(" ")[0]
+            line_height = int(font.size * line_spacing)
+            max_lines = math.floor(height / line_height)
+            lines = []
+
+            # Determine if text can fit at current scale.
+            words = text.split(" ")
+
+            while len(lines) < max_lines and len(words) > 0:
+                line = []
+
+                while (
+                    len(words) > 0 and font.getsize(" ".join(line + [words[0]]))[0] <= width
+                ):
+                    line.append(words.pop(0))
+
+                lines.append(" ".join(line))
+
+            if len(lines) <= max_lines and len(words) == 0:
+                # Solution is found, render the text.
+                y = int(
+                    y1
+                    + (height / 2)
+                    - (len(lines) * line_height / 2)
+                    - (line_height - font.size) / 2
+                )
+
+                bounds = [x2, y, x1, y + len(lines) * line_height]
+
+                for line in lines:
+                    line_width = font.getsize(line)[0]
+                    x = int(x1 + (width / 2) - (line_width / 2))
+                    bounds[0] = min(bounds[0], x)
+                    bounds[2] = max(bounds[2], x + line_width)
+                    canvas.text((x, y), line, font=font, fill=textcolor)
+                    y += line_height
+
+                return tuple(bounds)
+
+            font = ImageFont.truetype(font.path, font.size - 1)
+
 
 class MainView(View):
-    def __init__(self, image, channels=None, options=[]):
-        self._options = options
-        self._current_option = 0
-        self._change_mode = False
-        self._edit_mode = False
-        self._help_mode = False
+    def __init__(self, image, channels=None):
 
         self.channels = channels
         View.__init__(self, image)
@@ -205,9 +202,7 @@ class MainView(View):
         x += 11
         col = channel.indicator_color(saturation, channel.label_colours)
         if channel.alarm:
-            icon(
-                self._image, icon_snooze, (x - 2, 0), col if active else (129, 129, 129)
-            )
+            self.icon(icon_snooze, (x - 2, 0), col if active else (129, 129, 129))
         else:
             self._draw.rectangle(
                 (x, 2, x + 15, 17),
@@ -224,19 +219,40 @@ class MainView(View):
         )
 
     def render(self):
-        if self._edit_mode:
-            self.render_edit()
-        else:
-            self.render_overview()
+        self.clear()
 
-    def render_edit(self):
-        self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), COLOR_WHITE)
+        for channel in self.channels:
+            self.render_channel(channel, font)
+
+        # Icon backdrops
+        self._draw.rectangle((0, 0, 19, 19), (32, 138, 251))
+
+        # Icons
+        self.icon(icon_rightarrow, (0, 0), (255, 255, 255))
+
+        alarm.render((0, DISPLAY_HEIGHT - 19))
+
+        self.label("X", "S", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
+        self.label("Y", "BL", textcolor=COLOR_WHITE, bgcolor=COLOR_GREEN)
+
+
+class EditView(View):
+    def __init__(self, image, options=[]):
+        self._options = options
+        self._current_option = 0
+        self._change_mode = False
+        self._help_mode = False
+        self.channel = None
+
+        View.__init__(self, image)
+
+    def render(self):
         self.label("X", "Done", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
 
         option = self._options[self._current_option]
         title = option["title"]
         prop = option["prop"]
-        object = option["object"]
+        object = option.get("object", self.channel)
         value = getattr(object, prop)
         text = option["format"](value)
         mode = option.get("mode", "int")
@@ -261,76 +277,45 @@ class MainView(View):
 
         self.label("A", "?", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
 
-        self._draw.text(
-            (23, 3),
-            "Settings",
-            font=font,
-            fill=(0, 0, 0),
-        )
         self._draw.text((3, 43), f"{title} : {text}", font=font, fill=(0, 0, 0))
 
         if self._help_mode:
             self.overlay(help)
 
-    def render_overview(self):
-        self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255))
-
-        for channel in self.channels:
-            self.render_channel(channel, font)
-
-        # Icon backdrops
-        self._draw.rectangle((0, 0, 19, 19), (32, 138, 251))
-
-        # Icons
-        icon(self._image, icon_rightarrow, (0, 0), (255, 255, 255))
-
-        alarm.render((0, DISPLAY_HEIGHT - 19))
-
-        self.label("X", "S", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
-        self.label("Y", "BL", textcolor=COLOR_WHITE, bgcolor=COLOR_GREEN)
-
     def button_a(self):
-        if self._edit_mode:
-            self._help_mode = not self._help_mode
-        return self._edit_mode
+        self._help_mode = not self._help_mode
+        return True
 
     def button_b(self):
         if self._help_mode:
             return True
-        if self._edit_mode:
-            if self._change_mode:
-                option = self._options[self._current_option]
-                prop = option["prop"]
-                mode = option.get("mode", "int")
-                object = option["object"]
 
-                value = getattr(object, prop)
-                if mode == "bool":
-                    value = False
-                else:
-                    inc = option["inc"]
-                    limit = option["min"]
-                    value -= inc
-                    if value < limit:
-                        value = limit
-                setattr(object, prop, value)
+        if self._change_mode:
+            option = self._options[self._current_option]
+            prop = option["prop"]
+            mode = option.get("mode", "int")
+            object = option.get("object", self.channel)
+
+            value = getattr(object, prop)
+            if mode == "bool":
+                value = False
             else:
-                self._current_option += 1
-                self._current_option %= len(self._options)
-            return True
+                inc = option["inc"]
+                limit = option["min"]
+                value -= inc
+                if value < limit:
+                    value = limit
+            setattr(object, prop, value)
         else:
-            return False
+            self._current_option += 1
+            self._current_option %= len(self._options)
+        return True
 
     def button_x(self):
-        if self._edit_mode:
-            if self._change_mode:
-                self._change_mode = False
-            else:
-                self._edit_mode = False
-        else:
-            self._edit_mode = True
-        self._help_mode = False
-        return True
+        if self._change_mode:
+            self._change_mode = False
+            return True
+        return False
 
     def button_y(self):
         if self._help_mode:
@@ -339,7 +324,7 @@ class MainView(View):
             option = self._options[self._current_option]
             prop = option["prop"]
             mode = option.get("mode", "int")
-            object = option["object"]
+            object = option.get("object", self.channel)
 
             value = getattr(object, prop)
             if mode == "bool":
@@ -353,6 +338,21 @@ class MainView(View):
             setattr(object, prop, value)
         else:
             self._change_mode = True
+
+
+class SettingsView(EditView):
+    def __init__(self, image, options=[]):
+        EditView.__init__(self, image, options)
+
+    def render(self):
+        self.clear()
+        self._draw.text(
+            (23, 3),
+            "Settings",
+            font=font,
+            fill=(0, 0, 0),
+        )
+        EditView.render(self)
 
 
 class ChannelView(View):
@@ -422,8 +422,7 @@ class DetailView(ChannelView):
             (r, 0, 0),
         )
 
-        icon(
-            self._image,
+        self.icon(
             icon_snooze,
             (DISPLAY_WIDTH - 40, DISPLAY_HEIGHT - alarm_line - 10),
             (r, 0, 0),
@@ -431,15 +430,15 @@ class DetailView(ChannelView):
 
         # Next button
         self._draw.rectangle((0, 0, 19, 19), COLOR_BLUE)
-        icon(self._image, icon_rightarrow, (0, 0), COLOR_WHITE)
+        self.icon(icon_rightarrow, (0, 0), COLOR_WHITE)
 
         # Edit
         self.label("X", "Edit", textcolor=(255, 255, 255), bgcolor=COLOR_RED)
 
 
-class EditView(ChannelView):
+class ChannelEditView(ChannelView, EditView):
     def __init__(self, image, channel=None):
-        self._options = [
+        options = [
             {
                 "title": "Alarm Level",
                 "prop": "alarm_level",
@@ -475,107 +474,19 @@ class EditView(ChannelView):
                 "help": "Frequency for fully dried soil",
             },
         ]
-        self._current_option = 0
-        self._change_mode = False
-        self._help_mode = False
+        EditView.__init__(self, image, options)
         ChannelView.__init__(self, image, channel)
 
     def render(self):
-        self._draw.rectangle((0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255))
+        self.clear()
 
         self._draw.text(
             (23, 3), "{}".format(self.channel.title), font=font, fill=(0, 0, 0)
         )
 
-        option = self._options[self._current_option]
-        title = option["title"]
-        prop = option["prop"]
-        value = getattr(self.channel, prop)
-        text = option["format"](value)
-        mode = option.get("mode", "int")
-        self._draw.text((3, 43), f"{title} : {text}", font=font, fill=(0, 0, 0))
-        help = option.get("help", "")
+        EditView.render(self)
 
         self.draw_status(True)
-
-        if self._change_mode:
-            self.label(
-                "Y",
-                "Yes" if mode == "bool" else "++",
-                textcolor=COLOR_WHITE,
-                bgcolor=COLOR_YELLOW,
-            )
-            self.label(
-                "B",
-                "No" if mode == "bool" else "--",
-                textcolor=COLOR_WHITE,
-                bgcolor=COLOR_BLUE,
-            )
-        else:
-            self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
-            self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
-
-        self.label("A", "?", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
-
-        self.label("X", "Done", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
-
-        if self._help_mode:
-            self.overlay(help)
-
-    def button_a(self):
-        self._help_mode = not self._help_mode
-        return True
-
-    def button_b(self):
-        if self._help_mode:
-            return True
-        if self._change_mode:
-            option = self._options[self._current_option]
-            prop = option["prop"]
-            mode = option.get("mode", "int")
-
-            value = getattr(self.channel, prop)
-            if mode == "bool":
-                value = False
-            else:
-                inc = option["inc"]
-                limit = option["min"]
-                value -= inc
-                if value < limit:
-                    value = limit
-            setattr(self.channel, prop, value)
-        else:
-            self._current_option += 1
-            self._current_option %= len(self._options)
-        return True
-
-    def button_x(self):
-        if self._change_mode:
-            self._change_mode = False
-            return True
-        self._help_mode = False
-        return False
-
-    def button_y(self):
-        if self._help_mode:
-            return True
-        if self._change_mode:
-            option = self._options[self._current_option]
-            prop = option["prop"]
-            mode = option.get("mode", "int")
-
-            value = getattr(self.channel, prop)
-            if mode == "bool":
-                value = True
-            else:
-                inc = option["inc"]
-                limit = option["max"]
-                value += inc
-                if value > limit:
-                    value = limit
-            setattr(self.channel, prop, value)
-        else:
-            self._change_mode = True
 
 
 class Channel:
@@ -748,10 +659,8 @@ Dry point: {dry_point}
             self.alarm = False
 
 
-class Alarm:
+class Alarm(View):
     def __init__(self, image, enabled=True, interval=10.0, beep_frequency=440):
-        self._image = image
-        self._draw = ImageDraw.Draw(image)
         self.piezo = Piezo()
         self.enabled = enabled
         self.interval = interval
@@ -759,6 +668,8 @@ class Alarm:
         self._triggered = False
         self._time_last_beep = time.time()
         self._sleep_until = None
+
+        View.__init__(self, image)
 
     def update_from_yml(self, config):
         if config is not None:
@@ -798,7 +709,7 @@ class Alarm:
         r = 129
         if self._triggered:
             r = int(((math.sin(time.time() * 3 * math.pi) + 1.0) / 2.0) * 128) + 127
-        icon(self._image, icon_snooze, (x, y - 1), (r, 129, 129))
+        self.icon(icon_snooze, (x, y - 1), (r, 129, 129))
 
         if self._sleep_until is not None:  # TODO maybe sleeping alarm icon?
             if self._sleep_until > time.time():
@@ -984,18 +895,21 @@ Alarm Interval: {:.2f}s
 
     viewcontroller = ViewController(
         [
-            MainView(image, channels=channels, options=main_options),
+            (
+                MainView(image, channels=channels),
+                SettingsView(image, options=main_options),
+            ),
             (
                 DetailView(image, channel=channels[0]),
-                EditView(image, channel=channels[0]),
+                ChannelEditView(image, channel=channels[0]),
             ),
             (
                 DetailView(image, channel=channels[1]),
-                EditView(image, channel=channels[1]),
+                ChannelEditView(image, channel=channels[1]),
             ),
             (
                 DetailView(image, channel=channels[2]),
-                EditView(image, channel=channels[2]),
+                ChannelEditView(image, channel=channels[2]),
             ),
         ]
     )
