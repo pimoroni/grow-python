@@ -47,6 +47,7 @@ class Channel:
         dry_point=26.7,
         icon=None,
         auto_water=False,
+        enabled=False,
     ):
         self.channel = display_channel
         self.sensor = Moisture(sensor_channel)
@@ -61,6 +62,7 @@ class Channel:
         self.dry_point = dry_point
         self.last_dose = time.time()
         self.icon = icon
+        self.enabled = enabled
         self.alarm = False
 
         self.sensor.set_wet_point(wet_point)
@@ -91,6 +93,9 @@ class Channel:
             self.water_level = config.get("water_level", self.water_level)
             self.watering_delay = config.get("watering_delay", self.watering_delay)
             self.auto_water = config.get("auto_water", self.auto_water)
+            self.enabled = config.get("enabled", self.enabled)
+            self.wet_point = config.get("wet_point", self.wet_point)
+            self.dry_point = config.get("dry_point", self.dry_point)
             icon = config.get("icon", None)
             if icon is not None:
                 self.icon = Image.open(icon)
@@ -99,6 +104,7 @@ class Channel:
 
     def __str__(self):
         return """Channel: {channel}
+Enabled: {enabled}
 Alarm level: {alarm_level}
 Auto water: {auto_water}
 Water level: {water_level}
@@ -126,13 +132,14 @@ Dry point: {dry_point}
 
         # Saturation amounts from each sensor
         c = 1.0 - self.sensor.saturation
-        active = self.sensor.active
+        active = self.sensor.active and self.enabled
 
-        # Draw background bars
-        draw.rectangle(
-            (x, int(c * HEIGHT), x + 37, HEIGHT),
-            self.indicator_color(c) if active else (229, 229, 229),
-        )
+        if active:
+            # Draw background bars
+            draw.rectangle(
+                (x, int(c * HEIGHT), x + 37, HEIGHT),
+                self.indicator_color(c) if active else (229, 229, 229),
+            )
 
         # Draw plant image
         x -= 3
@@ -177,6 +184,8 @@ Dry point: {dry_point}
         )
 
     def update(self):
+        if not self.enabled:
+            return
         sat = self.sensor.saturation
         if sat < self.water_level:
             if self.water():
@@ -355,6 +364,10 @@ Alarm Interval: {:.2f}s
         update()
         render()
         display.display(image.convert("RGB"))
+
+        #w, h = image.size
+        #image.convert("RGB").resize((w * 4, h * 4), Image.NEAREST).save("display.png")
+        #break
 
         if alarm_enable and alarm and time.time() - time_last_beep > alarm_interval:
             piezo.beep(440, 0.1, blocking=False)
