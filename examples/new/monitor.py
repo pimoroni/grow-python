@@ -473,6 +473,7 @@ class ChannelEditView(ChannelView, EditView):
                 "min": 0,
                 "max": 1.0,
                 "mode": "float",
+                "round": 2,
                 "format": lambda value: f"{value * 100:0.2f}%",
                 "help": "Saturation at which alarm is triggered",
             },
@@ -490,6 +491,7 @@ class ChannelEditView(ChannelView, EditView):
                 "min": 1,
                 "max": 27,
                 "mode": "float",
+                "round": 2,
                 "format": lambda value: f"{value:0.2f}Hz",
                 "help": "Frequency for fully saturated soil",
             },
@@ -500,6 +502,7 @@ class ChannelEditView(ChannelView, EditView):
                 "min": 1,
                 "max": 27,
                 "mode": "float",
+                "round": 2,
                 "format": lambda value: f"{value:0.2f}Hz",
                 "help": "Frequency for fully dried soil",
             },
@@ -732,6 +735,8 @@ class Alarm(View):
                 kwargs={"blocking": False},
             ).start()
             self._time_last_beep = time.time()
+
+            self._triggered = False
 
     def render(self, position=(0, 0)):
         x, y = position
