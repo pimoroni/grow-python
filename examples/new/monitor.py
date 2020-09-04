@@ -35,10 +35,13 @@ COLOR_RED = (254, 82, 82)
 
 
 # Only the ALPHA channel is used from these images
-icon_drop = Image.open("../icons/icon-drop.png")
-icon_nodrop = Image.open("../icons/icon-nodrop.png")
-icon_rightarrow = Image.open("../icons/icon-rightarrow.png")
-icon_snooze = Image.open("../icons/icon-snooze.png")
+icon_drop = Image.open("../icons/icon-drop.png").convert("RGBA")
+icon_nodrop = Image.open("../icons/icon-nodrop.png").convert("RGBA")
+icon_rightarrow = Image.open("../icons/icon-rightarrow.png").convert("RGBA")
+icon_alarm = Image.open("../icons/icon-alarm.png").convert("RGBA")
+icon_snooze = Image.open("../icons/icon-snooze.png").convert("RGBA")
+icon_help = Image.open("../icons/icon-help.png").convert("RGBA")
+icon_settings = Image.open("../icons/icon-settings.png").convert("RGBA")
 
 
 class View:
@@ -208,7 +211,7 @@ class MainView(View):
         x += 11
         col = channel.indicator_color(saturation, channel.label_colours)
         if channel.alarm:
-            self.icon(icon_snooze, (x - 2, 0), col if active else (129, 129, 129))
+            self.icon(icon_alarm, (x - 2, 0), col if active else (129, 129, 129))
         else:
             self._draw.rectangle(
                 (x, 2, x + 15, 17),
@@ -238,7 +241,8 @@ class MainView(View):
 
         self.alarm.render((0, DISPLAY_HEIGHT - 19))
 
-        self.label("X", "S", textcolor=COLOR_WHITE, bgcolor=COLOR_RED)
+        self.icon(icon_settings, (DISPLAY_WIDTH - 19, 0), COLOR_RED)
+
         self.label("Y", "BL", textcolor=COLOR_WHITE, bgcolor=COLOR_GREEN)
 
 
@@ -283,7 +287,7 @@ class EditView(View):
             self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
             self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
 
-        self.label("A", "?", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
+        self.icon(icon_help, (0, 0), COLOR_BLUE)
 
         self._draw.text((3, 43), f"{title} : {text}", font=self.font, fill=(0, 0, 0))
 
@@ -448,7 +452,7 @@ class DetailView(ChannelView):
         )
 
         self.icon(
-            icon_snooze,
+            icon_alarm,
             (DISPLAY_WIDTH - 40, DISPLAY_HEIGHT - alarm_line - 10),
             (r, 0, 0),
         )
@@ -745,11 +749,11 @@ class Alarm(View):
         r = 129
         if self._triggered:
             r = int(((math.sin(time.time() * 3 * math.pi) + 1.0) / 2.0) * 128) + 127
-        self.icon(icon_snooze, (x, y - 1), (r, 129, 129))
 
-        if self._sleep_until is not None:  # TODO maybe sleeping alarm icon?
-            if self._sleep_until > time.time():
-                self._draw.text((x, y), "zZ", font=self.font, fill=(255, 255, 255))
+        if self._sleep_until is None:
+            self.icon(icon_alarm, (x, y - 1), (r, 129, 129))
+        else:
+            self.icon(icon_snooze, (x, y - 1), (r, 129, 129))
 
     def trigger(self):
         self._triggered = True
@@ -886,6 +890,9 @@ class Config:
         self.set("general", settings)
 
 
+backlight = True
+
+
 def main():
     def handle_button(pin):
         global backlight
@@ -908,7 +915,6 @@ def main():
                 backlight = not backlight
                 display.set_backlight(backlight)
 
-    backlight = True
 
     # Set up the ST7735 SPI Display
     display = ST7735.ST7735(
