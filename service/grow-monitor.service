@@ -1,0 +1,14 @@
+[Unit]
+Description=Grow Monitoring Service
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/share/grow-monitor
+ExecStart=/usr/bin/grow-monitor /etc/default/grow
+Restart=on-failure
+StandardOutput=syslog+console
+StandardError=syslog+console
+
+[Install]
+WantedBy=multi-user.target
