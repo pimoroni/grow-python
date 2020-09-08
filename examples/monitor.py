@@ -35,13 +35,13 @@ COLOR_RED = (254, 82, 82)
 
 
 # Only the ALPHA channel is used from these images
-icon_drop = Image.open("../icons/icon-drop.png").convert("RGBA")
-icon_nodrop = Image.open("../icons/icon-nodrop.png").convert("RGBA")
-icon_rightarrow = Image.open("../icons/icon-rightarrow.png").convert("RGBA")
-icon_alarm = Image.open("../icons/icon-alarm.png").convert("RGBA")
-icon_snooze = Image.open("../icons/icon-snooze.png").convert("RGBA")
-icon_help = Image.open("../icons/icon-help.png").convert("RGBA")
-icon_settings = Image.open("../icons/icon-settings.png").convert("RGBA")
+icon_drop = Image.open("icons/icon-drop.png").convert("RGBA")
+icon_nodrop = Image.open("icons/icon-nodrop.png").convert("RGBA")
+icon_rightarrow = Image.open("icons/icon-rightarrow.png").convert("RGBA")
+icon_alarm = Image.open("icons/icon-alarm.png").convert("RGBA")
+icon_snooze = Image.open("icons/icon-snooze.png").convert("RGBA")
+icon_help = Image.open("icons/icon-help.png").convert("RGBA")
+icon_settings = Image.open("icons/icon-settings.png").convert("RGBA")
 
 
 class View:
