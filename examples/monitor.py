@@ -243,8 +243,6 @@ class MainView(View):
 
         self.icon(icon_settings, (DISPLAY_WIDTH - 19, 0), COLOR_RED)
 
-        self.label("Y", "BL", textcolor=COLOR_WHITE, bgcolor=COLOR_GREEN)
-
 
 class EditView(View):
     """Baseclass for a settings edit view."""
@@ -747,7 +745,7 @@ class Alarm(View):
         # Draw the snooze icon- will be pulsing red if the alarm state is True
         self._draw.rectangle((x, y, x + 19, y + 19), (255, 255, 255))
         r = 129
-        if self._triggered:
+        if self._triggered and self._sleep_until is None:
             r = int(((math.sin(time.time() * 3 * math.pi) + 1.0) / 2.0) * 128) + 127
 
         if self._sleep_until is None:
@@ -763,6 +761,12 @@ class Alarm(View):
 
     def enable(self):
         self.enabled = True
+
+    def cancel_sleep(self):
+        self._sleep_until = None
+
+    def sleeping(self):
+        return self._sleep_until is not None
 
     def sleep(self, duration=500):
         self._sleep_until = time.time() + duration
@@ -890,13 +894,8 @@ class Config:
         self.set("general", settings)
 
 
-backlight = True
-
-
 def main():
     def handle_button(pin):
-        global backlight
-
         index = BUTTONS.index(pin)
         label = LABELS[index]
 
@@ -905,15 +904,16 @@ def main():
 
         if label == "B":  # Sleep Alarm
             if not viewcontroller.button_b():
-                alarm.sleep()
+                if alarm.sleeping():
+                    alarm.cancel_sleep()
+                else:
+                    alarm.sleep()
 
         if label == "X":
             viewcontroller.button_x()
 
         if label == "Y":
-            if not viewcontroller.button_y():
-                backlight = not backlight
-                display.set_backlight(backlight)
+            viewcontroller.button_y()
 
 
     # Set up the ST7735 SPI Display
