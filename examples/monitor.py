@@ -113,16 +113,16 @@ class View:
             (x + margin, y + margin - 1), text, font=self.font, fill=textcolor
         )
 
-    def overlay(self, text):
+    def overlay(self, text, top=0):
         """Draw an overlay with some auto-sized text."""
         self._draw.rectangle(
-            (0, 20, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254)
+            (0, top, DISPLAY_WIDTH, DISPLAY_HEIGHT), fill=(192, 225, 254)
         )  # Overlay backdrop
-        self._draw.rectangle((0, 20, DISPLAY_WIDTH, 21), fill=COLOR_BLUE)  # Top border
+        self._draw.rectangle((0, top, DISPLAY_WIDTH, top + 1), fill=COLOR_BLUE)  # Top border
         self.text_in_rect(
             text,
             self.font,
-            (3, 20, DISPLAY_WIDTH - 3, DISPLAY_HEIGHT - 2),
+            (3, top, DISPLAY_WIDTH - 3, DISPLAY_HEIGHT - 2),
             line_spacing=1,
         )
 
@@ -244,7 +244,7 @@ class MainView(View):
         self.icon(icon_backdrop, (0, 0), COLOR_WHITE)
         self.icon(icon_rightarrow, (3, 3), (55, 55, 55))
 
-        self.alarm.render((0, DISPLAY_HEIGHT - 19))
+        self.alarm.render((3, DISPLAY_HEIGHT - 23))
 
         self.icon(icon_backdrop.rotate(180), (DISPLAY_WIDTH - 26, 0), COLOR_WHITE)
         self.icon(icon_settings, (DISPLAY_WIDTH - 19 - 3, 3), (55, 55, 55))
@@ -279,25 +279,27 @@ class EditView(View):
             self.label(
                 "Y",
                 "Yes" if mode == "bool" else "++",
-                textcolor=COLOR_WHITE,
-                bgcolor=COLOR_YELLOW,
+                textcolor=COLOR_BLACK,
+                bgcolor=COLOR_WHITE,
             )
             self.label(
                 "B",
                 "No" if mode == "bool" else "--",
-                textcolor=COLOR_WHITE,
-                bgcolor=COLOR_BLUE,
+                textcolor=COLOR_BLACK,
+                bgcolor=COLOR_WHITE,
             )
         else:
-            self.label("B", "Next", textcolor=COLOR_WHITE, bgcolor=COLOR_BLUE)
-            self.label("Y", "Change", textcolor=COLOR_WHITE, bgcolor=COLOR_YELLOW)
+            self.label("B", "Next", textcolor=COLOR_BLACK, bgcolor=COLOR_WHITE)
+            self.label("Y", "Change", textcolor=COLOR_BLACK, bgcolor=COLOR_WHITE)
 
-        self.icon(icon_help, (0, 0), COLOR_BLUE)
-
-        self._draw.text((3, 43), f"{title} : {text}", font=self.font, fill=COLOR_WHITE)
+        self._draw.text((3, 36), f"{title} : {text}", font=self.font, fill=COLOR_WHITE)
 
         if self._help_mode:
-            self.overlay(help)
+            self.icon(icon_backdrop.rotate(90), (0, 0), COLOR_BLUE)
+            self._draw.rectangle((7, 3, 23, 19), COLOR_BLACK)
+            self.overlay(help, top=26)
+
+        self.icon(icon_help, (0, 0), COLOR_BLUE)
 
     def button_a(self):
         self._help_mode = not self._help_mode
@@ -373,7 +375,7 @@ class SettingsView(EditView):
     def render(self):
         self.clear()
         self._draw.text(
-            (23, 3),
+            (28, 5),
             "Settings",
             font=self.font,
             fill=COLOR_WHITE,
@@ -482,8 +484,8 @@ class DetailView(ChannelView):
         self.icon(icon_rightarrow, (3, 3), (55, 55, 55))
 
         # Prev button
-        self.icon(icon_backdrop, (0, DISPLAY_HEIGHT - 26), COLOR_WHITE)
-        self.icon(icon_return, (3, DISPLAY_HEIGHT - 26 + 3), (55, 55, 55))
+        # self.icon(icon_backdrop, (0, DISPLAY_HEIGHT - 26), COLOR_WHITE)
+        # self.icon(icon_return, (3, DISPLAY_HEIGHT - 26 + 3), (55, 55, 55))
 
         # Edit
         self.icon(icon_backdrop.rotate(180), (DISPLAY_WIDTH - 26, 0), COLOR_WHITE)
@@ -837,8 +839,7 @@ class ViewController:
             self.next_view()
 
     def button_b(self):
-        if not self.view.button_b():
-            self.prev_view()
+        self.view.button_b()
 
     def button_x(self):
         if not self.view.button_x():
