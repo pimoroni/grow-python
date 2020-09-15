@@ -43,6 +43,13 @@ sudo apt install python3-setuptools python3-pip python3-yaml python3-smbus pytho
 * Enable SPI: `sudo raspi-config nonint do_spi 0`
 * Add the following to `/boot/config.txt`: `dtoverlay=spi0-cs,cs0_pin=14`
 
+## Monitoring
+
+You should read the following to get up and running with our monitoring script:
+
+* [Using and configuring monitor.py](examples/README.md)
+* [Setting up monitor.py as a service](service/README.md)
+
 ## Help & Support
 
 * GPIO Pinout - https://pinout.xyz/pinout/grow_hat_mini

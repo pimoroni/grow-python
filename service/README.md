@@ -1,6 +1,12 @@
 # Grow Service
 
-This script will install Grow as a service on your Raspberry Pi, allowing it to run from boot and recover from errors.
+This script will install Grow as a service on your Raspberry Pi, allowing it to run at boot and recover from errors.
+
+# Installing
+
+```
+sudo ./install.sh
+```
 
 # Useful Commands
 
@@ -11,4 +17,6 @@ This script will install Grow as a service on your Raspberry Pi, allowing it to 
 
 # Configuring Grow
 
-You can configure grow using the on-screen UI, or by editing the settings in `/etc/default/grow`
+You can configure grow using the on-screen UI, or by editing the settings in `/etc/default/grow`.
+
+[See the examples README.md](../examples/README.md#channel-settings) for an explanation of the options.
