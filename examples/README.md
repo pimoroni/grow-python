@@ -1,21 +1,12 @@
-# Monitoring and/or Watering Your Plants
+# Monitoring Your Plants
 
-The `grow-monitor-and-water.py` example can monitor and, optionally, automatically water all three Grow channels.
+The example `monitor.py` monitors the moisture level of your soil and sounds an alarm when it drops below a defined threshold.
 
-By default auto-watering is disabled and an alarm will sound every 1s if the `warn_level` is reached.
-
-Run it with `python3 grow-monitor-and-water.py`.
-
-## Monitoring
-
-Grow can monitor the moisture level of your soil, sounding an alarm when it dries out.
-
-Grow is configured using `settings.yml`. Your settings for monitoring only will look something like this:
+It's configured using `settings.yml`. Your settings for monitoring will look something like this:
 
 ```yaml
 channel1:
         warn_level: 0.2
-        icon: icons/flat-4.png
 channel2:
         warn_level: 0.2
 channel3:
@@ -24,6 +15,16 @@ general:
         alarm_enable: True
         alarm_interval: 1.0
 ```
+
+`monitor.py` includes a main view showing the moisture status of each channel and the level beyond which the alarm will sound.
+
+The controls from the main view are as follows:
+
+* `A` - cycle through the main screen and each channel
+* `B` - snooze the alarm
+* `X` - configure global settings or the selected channel
+
+The warning moisture level can be configured for each channel, along with the Wet and Dry points that store the frequency expected from the sensor when soil is fully wet/dry.
 
 ## Watering
 
@@ -39,8 +40,7 @@ channel1:
         pump_time: 0.7
         wet_point: 0.7
         dry_point: 27.6
-        auto_water: False
-        icon: icons/flat-4.png
+        auto_water: True
 channel2:
         water_level: 0.8
         warn_level: 0.2
@@ -48,7 +48,7 @@ channel2:
         pump_time: 0.7
         wet_point: 0.7
         dry_point: 27.6
-        auto_water: False
+        auto_water: True
 channel3:
         water_level: 0.8
         warn_level: 0.2
@@ -56,7 +56,7 @@ channel3:
         pump_time: 0.7
         wet_point: 0.7
         dry_point: 27.6
-        auto_water: False
+        auto_water: True
 general:
         alarm_enable: True
         alarm_interval: 1.0
@@ -73,7 +73,6 @@ Grow has three channels which are separated into the sections `channel1`, `chann
 * `auto_water` - Whether to run the attached pump (True to auto-water, False for manual watering)
 * `wet_point` - Value for the sensor in saturated soil (in Hz)
 * `dry_point` - Value for the sensor in totally dry soil (in Hz)
-* `icon` - Optional icon image for the channel, see the icons directory for images.
 
 ## General Settings
 
