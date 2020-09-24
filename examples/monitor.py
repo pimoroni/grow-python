@@ -400,6 +400,18 @@ class ChannelView(View):
             fill=(255, 255, 255),
         )
 
+    def draw_context(self, position, metric="Hz"):
+        context = f"Now: {self.channel.sensor.moisture:.2f}Hz"
+        if metric.lower() == "sat":
+            context = f"Now: {self.channel.sensor.saturation * 100:.2f}%"
+
+        self._draw.text(
+            position,
+            context,
+            font=self.font,
+            fill=(255, 255, 255),
+        )
+
 
 class DetailView(ChannelView):
     """Single channel details.
@@ -507,6 +519,7 @@ class ChannelEditView(ChannelView, EditView):
                 "round": 2,
                 "format": lambda value: f"{value * 100:0.2f}%",
                 "help": "Saturation at which alarm is triggered",
+                "context": "sat",
             },
             {
                 "title": "Enabled",
@@ -525,6 +538,7 @@ class ChannelEditView(ChannelView, EditView):
                 "round": 2,
                 "format": lambda value: f"{value:0.2f}Hz",
                 "help": "Frequency for fully saturated soil",
+                "context": "hz",
             },
             {
                 "title": "Dry Point",
@@ -536,6 +550,7 @@ class ChannelEditView(ChannelView, EditView):
                 "round": 2,
                 "format": lambda value: f"{value:0.2f}Hz",
                 "help": "Frequency for fully dried soil",
+                "context": "hz",
             },
         ]
         EditView.__init__(self, image, options)
@@ -545,6 +560,10 @@ class ChannelEditView(ChannelView, EditView):
         self.clear()
 
         EditView.render(self)
+
+        option = self._options[self._current_option]
+        if "context" in option:
+            self.draw_context((34, 6), option["context"])
 
 
 class Channel:
