@@ -57,6 +57,7 @@ You should read the following to get up and running with our monitoring script:
 * Discord - https://discord.gg/hr93ByC
 
 # Changelog
+
 0.0.1
 -----
 

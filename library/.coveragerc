@@ -1,4 +1,4 @@
 [run]
-source = enviroplus
+source = grow
 omit =
     .tox/*
