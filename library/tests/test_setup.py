@@ -1,56 +1,47 @@
+import mock
+
+
 def test_moisture_setup(GPIO, smbus):
-    from grow import moisture
-    moisture._is_setup = False
+    from grow.moisture import Moisture
 
-    moisture.setup()
-    moisture.setup()
+    ch1 = Moisture(channel=1)
+    ch2 = Moisture(channel=2)
+    ch3 = Moisture(channel=3)
 
-
-def test_moisture_read_all(GPIO, smbus):
-    from grow import moisture
-    moisture._is_setup = False
-
-    result = moisture.read_all()
-
-    assert type(result(1)) == float
-    assert int(result(1)) == 100
-
-    assert type(result(2)) == float
-    assert int(result(2)) == 500
-
-    assert type(result.(3)) == float
-    assert int(result.(3)) == 5000
-
-    assert "Moisture" in str(result)
+    assert GPIO.setup.has_calls([
+        mock.call(ch1._gpio_pin, GPIO.IN),
+        mock.call(ch2._gpio_pin, GPIO.IN),
+        mock.call(ch3._gpio_pin, GPIO.IN)
+    ])
 
 
-def test_moisture_read_each(GPIO, smbus):
-    from grow import moisture
-    moisture._is_setup = False
+def test_moisture_read(GPIO, smbus):
+    from grow.moisture import Moisture
 
-    assert int(moisture.read(1)) == 100
-    assert int(moisture.read(2)) == 500
-    assert int(moisture.read(3)) == 5000
+    assert Moisture(channel=1).saturation == 1.0
+    assert Moisture(channel=2).saturation == 1.0
+    assert Moisture(channel=3).saturation == 1.0
 
+    assert Moisture(channel=1).moisture == 0
+    assert Moisture(channel=2).moisture == 0
+    assert Moisture(channel=3).moisture == 0
 
-def test_moisture_cleanup(GPIO, smbus):
-    from grow import moisture
-    moisture.cleanup()
-
-    GPIO.input.assert_called_with(moisture.MOISTURE_1_PIN, 0)
-    GPIO.input.assert_called_with(moisture.MOISTURE_2_PIN, 0)
-    GPIO.input.assert_called_with(moisture.MOISTURE_3_PIN, 0)
 
 def test_pump_setup(GPIO, smbus):
-    from grow import pump
-    moisture._is_setup = False
-    moisture.setup()
-    moisture.setup()
+    from grow.pump import Pump, PUMP_PWM_FREQ
 
-def test_pump_cleanup(GPIO, smbus):
-    from grow import pump
-    pump.cleanup()
+    ch1 = Pump(channel=1)
+    ch2 = Pump(channel=2)
+    ch3 = Pump(channel=3)
 
-    GPIO.input.assert_called_with(moisture.PUMP_1_PIN, 0)
-    GPIO.input.assert_called_with(moisture.PUMP_2_PIN, 0)
-    GPIO.input.assert_called_with(moisture.PUMP_3_PIN, 0)
+    assert GPIO.setup.has_calls([
+        mock.call(ch1._gpio_pin, GPIO.OUT, initial=GPIO.LOW),
+        mock.call(ch2._gpio_pin, GPIO.OUT, initial=GPIO.LOW),
+        mock.call(ch3._gpio_pin, GPIO.OUT, initial=GPIO.LOW)
+    ])
+
+    assert GPIO.PWM.has_calls([
+        mock.call(ch1._gpio_pin, PUMP_PWM_FREQ),
+        mock.call(ch2._gpio_pin, PUMP_PWM_FREQ),
+        mock.call(ch3._gpio_pin, PUMP_PWM_FREQ)
+    ])

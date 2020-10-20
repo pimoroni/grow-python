@@ -80,4 +80,3 @@ class Pump(object):
             self.set_speed(speed)
             self._timeout.start()
             return True
-
