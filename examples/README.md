@@ -41,6 +41,7 @@ channel1:
         wet_point: 0.7
         dry_point: 27.6
         auto_water: True
+        watering_delay: 60
 channel2:
         water_level: 0.8
         warn_level: 0.2
@@ -49,6 +50,7 @@ channel2:
         wet_point: 0.7
         dry_point: 27.6
         auto_water: True
+        watering_delay: 60
 channel3:
         water_level: 0.8
         warn_level: 0.2
@@ -57,6 +59,7 @@ channel3:
         wet_point: 0.7
         dry_point: 27.6
         auto_water: True
+        watering_delay: 60
 general:
         alarm_enable: True
         alarm_interval: 1.0
@@ -73,6 +76,7 @@ Grow has three channels which are separated into the sections `channel1`, `chann
 * `auto_water` - Whether to run the attached pump (True to auto-water, False for manual watering)
 * `wet_point` - Value for the sensor in saturated soil (in Hz)
 * `dry_point` - Value for the sensor in totally dry soil (in Hz)
+* `watering_delay` - Delay between waterings (in seconds)
 
 ## General Settings
 
