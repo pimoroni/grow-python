@@ -1066,7 +1066,7 @@ Alarm Interval: {:.2f}s
             if channel.alarm:
                 alarm.trigger()
 
-        light_level_low = light.get_lux() < 3.0
+        light_level_low = light.get_lux() < 1.0
 
         alarm.update(light_level_low)
 
