@@ -1066,14 +1066,14 @@ Alarm Interval: {:.2f}s
             if channel.alarm:
                 alarm.trigger()
 
-        light_level_low = light.get_lux() < 1.0
+        light_level_low = light.get_lux() < config.get_general().get("light_level_low")
 
         alarm.update(light_level_low)
 
         viewcontroller.update()
         viewcontroller.render()
 
-        if light_level_low:
+        if light_level_low and config.get_general().get("black_screen_when_light_low"):
             display.display(image_blank.convert("RGB"))
 
         else:
