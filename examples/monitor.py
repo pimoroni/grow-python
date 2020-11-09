@@ -1015,7 +1015,10 @@ Alarm Interval: {:.2f}s
 Low Light Set Screen To Black: {}
 Low Light Value {:.2f}
 """.format(
-            alarm.enabled, alarm.interval, config.get_general("black_screen_when_light_low"), config.get_general("light_level_low")
+            alarm.enabled,
+            alarm.interval,
+            config.get_general().get("black_screen_when_light_low"),
+            config.get_general().get("light_level_low")
         )
     )
 
