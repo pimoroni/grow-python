@@ -1012,8 +1012,10 @@ def main():
         """Settings:
 Alarm Enabled: {}
 Alarm Interval: {:.2f}s
+Low Light Set Screen To Black: {:..}
+Low Light Value {:...}
 """.format(
-            alarm.enabled, alarm.interval
+            alarm.enabled, alarm.interval, config.get_general("black_screen_when_light_low"), config.get_general("light_level_low")
         )
     )
 
