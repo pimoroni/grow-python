@@ -1,6 +1,16 @@
 import time
 
 
+def test_pumps_actually_stop(GPIO, smbus):
+    from grow.pump import Pump, global_lock
+
+    ch1 = Pump(channel=1)
+
+    ch1.dose(speed=0.5, timeout=0.05, blocking=False)
+    time.sleep(0.1)
+    assert ch1.get_speed() == 0
+
+
 def test_pumps_are_mutually_exclusive(GPIO, smbus):
     from grow.pump import Pump, global_lock
 

@@ -45,8 +45,12 @@ class Pump(object):
         """Set pump speed (PWM duty cycle)."""
         if speed > 1.0 or speed < 0:
             raise ValueError("Speed must be between 0 and 1")
-        if not global_lock.acquire(blocking=False):
+
+        if speed == 0:
+            global_lock.release()
+        elif not global_lock.acquire(blocking=False):
             return False
+
         self._pwm.ChangeDutyCycle(int(PUMP_MAX_DUTY * speed))
         self._speed = speed
         return True
@@ -57,11 +61,10 @@ class Pump(object):
 
     def stop(self):
         """Stop the pump."""
-        self.set_speed(0)
         if self._timeout is not None:
             self._timeout.cancel()
             self._timeout = None
-        global_lock.release()
+        self.set_speed(0)
 
     def dose(self, speed, timeout=0.1, blocking=True, force=False):
         """Pulse the pump for timeout seconds.
