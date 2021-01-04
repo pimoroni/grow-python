@@ -1001,6 +1001,7 @@ class MqttController:
             self.enabled = False
     
     def on_connect(self, mqttc, obj, flags, rc):
+        self._connected = True
         logging.info(f'mqtt_connect: RC: {rc}')
 
     def on_message(self, mqttc, obj, msg):
@@ -1042,7 +1043,7 @@ class MqttController:
         #if args.insecure:
         #    mqttc.tls_insecure_set(True)
 
-        if self.mqtt_username: or self.mqtt_password:
+        if self.mqtt_username or self.mqtt_password:
             self.mqttc.username_pw_set(self.mqtt_username, self.mqtt_password)
 
         self.mqttc.on_message = self.on_message
@@ -1062,22 +1063,17 @@ class MqttController:
 
 
     def update(self):
+        if not self._connected:
+            self.connect()
+
         if time.time() - self._time_last_pub > self.interval_s:
 
-              for channel in channels:
-                  topic = f'{self.mqtt_topic_root}channel{channel.channel}'
-                  value = channel.sensor.saturation
-                  logging.info(f'mqtt: Publishing: {value} to {topic} at QoS: {self.mqtt_qos}')
-                  self.mqttc.publish(topic, value,qos=self.mqtt_qos))
+            for channel in self.channels:
+                topic = f'{self.mqtt_topic_root}channel{channel.channel}'
+                value = channel.sensor.saturation
+                logging.info(f'mqtt: Publishing: {value} to {topic} at QoS: {self.mqtt_qos}')
+                self.mqttc.publish(topic, value,qos=self.mqtt_qos)
             self._time_last_pub = time.time()
-
-        
-
-
-
-    
-
-
 
 
 
