@@ -979,6 +979,7 @@ class MqttController:
         self.interval_s = interval_s
         self.mqtt_qos = mqtt_qos
         self._connected = False
+        self._connecting = False
         self._time_last_pub = time.time()
         
 
@@ -1017,6 +1018,7 @@ class MqttController:
         logging.info(f'mqtt_log: {string}')
 
     def connect(self):
+        self.connecting = True
         self.mqttc = mqtt.Client()
         #-- TODO - Add MQTT TLS Configuration
         #if self.mqtt_tls:
@@ -1056,18 +1058,20 @@ class MqttController:
 
         logging.info(f'mqtt: Connecting to: {self.mqtt_host}:{self.mqtt_port}')
         self.mqttc.connect(self.mqtt_host, self.mqtt_port, self.mqtt_keepalive)
-        self.mqttc.loop_start()
+        #self.mqttc.loop_start()
+        self._connecting = False
 
     def disconnect(self):
         self.mqttc.disconnect()
 
 
     def update(self):
-        if not self._connected:
+        if not self._connected and not self._connecting:
             self.connect()
 
-        if time.time() - self._time_last_pub > self.interval_s:
+        self.mqttc.loop()
 
+        if time.time() - self._time_last_pub > self.interval_s:
             for channel in self.channels:
                 topic = f'{self.mqtt_topic_root}channel{channel.channel}'
                 value = channel.sensor.saturation
@@ -1223,4 +1227,5 @@ Alarm Interval: {:.2f}s
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     main()
