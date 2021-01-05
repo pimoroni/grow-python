@@ -1057,7 +1057,8 @@ class MqttController:
             self.mqttc.on_log = self.on_log
 
         logging.info(f'mqtt: Connecting to: {self.mqtt_host}:{self.mqtt_port}')
-        self.mqttc.connect(self.mqtt_host, self.mqtt_port, self.mqtt_keepalive)
+        rc = self.mqttc.connect(self.mqtt_host, self.mqtt_port, self.mqtt_keepalive)
+        logging.info("mqtt Connect RC: " + str(rc))
         #self.mqttc.loop_start()
         self._connecting = False
 
@@ -1067,7 +1068,7 @@ class MqttController:
 
     def update(self):
         if not self._connected and not self._connecting:
-            self.connect()
+            #self.connect()
 
         self.mqttc.loop()
 
@@ -1199,6 +1200,7 @@ Alarm Interval: {:.2f}s
 
     mqttController = MqttController(channels)
     mqttController.update_from_yml(config.get_mqtt())
+    mqttController.connect()
 
     while True:
         for channel in channels:
