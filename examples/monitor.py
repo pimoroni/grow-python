@@ -17,7 +17,7 @@ import yaml
 from grow import Piezo
 from grow.moisture import Moisture
 from grow.pump import Pump
-
+import json
 import paho.mqtt.client as mqtt
 
 
@@ -962,7 +962,7 @@ class MqttController:
         mqtt_password=None,
         mqtt_debug=False,
         mqtt_keepalive=60,
-        mqtt_topic_root="plants/",
+        mqtt_topic_root="plants/moisture",
         mqtt_qos=2,
         interval_s=60
         ):
@@ -986,7 +986,6 @@ class MqttController:
 
     def update_from_yml(self, config):
         if config is not None:
-            print(config)
             self.enabled = True
             self.mqtt_host = config.get("mqtt_host", self.mqtt_host)
             self.mqtt_port = config.get("mqtt_port", self.mqtt_port)
@@ -1003,19 +1002,19 @@ class MqttController:
     
     def on_connect(self, mqttc, obj, flags, rc):
         self._connected = True
-        logging.info(f'mqtt_connect: RC: {rc}')
+        logging.debug(f'mqtt_connect: RC: {rc}')
 
     def on_message(self, mqttc, obj, msg):
-        logging.info(f'mqtt_message: Topic: {msg.topic}, QOS: {msg.qos}, Payload: {msg.payload}')
+        logging.debug(f'mqtt_message: Topic: {msg.topic}, QOS: {msg.qos}, Payload: {msg.payload}')
 
     def on_publish(self, mqttc, obj, mid):
-        logging.info(f'mqtt_publish: MID: {mid}')
+        logging.debug(f'mqtt_publish: MID: {mid}')
 
     def on_subscribe(self, mqttc, obj, mid, granted_qos):
-        logging.info(f'mqtt_subscribe: MID: {mid}, Granted QoS: {granted_qos}')
+        logging.debug(f'mqtt_subscribe: MID: {mid}, Granted QoS: {granted_qos}')
 
     def on_log(self,mqttc, obj, level, string):
-        logging.info(f'mqtt_log: {string}')
+        logging.debug(f'mqtt_log: {string}')
 
     def connect(self):
         self.connecting = True
@@ -1056,9 +1055,9 @@ class MqttController:
         if self.mqtt_debug:
             self.mqttc.on_log = self.on_log
 
-        logging.info(f'mqtt: Connecting to: {self.mqtt_host}:{self.mqtt_port}')
+        logging.debug(f'mqtt: Connecting to: {self.mqtt_host}:{self.mqtt_port}')
         rc = self.mqttc.connect(self.mqtt_host, self.mqtt_port, self.mqtt_keepalive)
-        logging.info("mqtt Connect RC: " + str(rc))
+        logging.debug("mqtt Connect RC: " + str(rc))
         #self.mqttc.loop_start()
         self._connecting = False
 
@@ -1067,17 +1066,19 @@ class MqttController:
 
 
     def update(self):
-        if not self._connected and not self._connecting:
-            #self.connect()
+
 
         self.mqttc.loop()
 
         if time.time() - self._time_last_pub > self.interval_s:
+            moistureDict = {}
             for channel in self.channels:
-                topic = f'{self.mqtt_topic_root}channel{channel.channel}'
-                value = channel.sensor.saturation
-                logging.info(f'mqtt: Publishing: {value} to {topic} at QoS: {self.mqtt_qos}')
-                self.mqttc.publish(topic, value,qos=self.mqtt_qos)
+                moistureDict[f'channel{channel.channel}'] = channel.sensor.saturation * 100
+            
+            value = json.dumps(moistureDict)
+            logging.info(f'mqtt: Publishing: {value} to {self.mqtt_topic_root} at QoS: {self.mqtt_qos}')
+            self.mqttc.publish(self.mqtt_topic_root, value,qos=self.mqtt_qos)
+                
             self._time_last_pub = time.time()
 
 
@@ -1229,5 +1230,4 @@ Alarm Interval: {:.2f}s
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
     main()

@@ -16,3 +16,12 @@ channel3:
 general:
   alarm_enable: true
   alarm_interval: 2
+mqtt:
+  mqtt_host: localhost
+  mqtt_port: 1883
+  mqtt_username: plantpi
+  mqtt_password: pimoroni
+  mqtt_debug: false
+  mqtt_topic_root: plants/moisture
+  interval_s : 30
+
