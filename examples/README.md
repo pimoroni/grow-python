@@ -80,3 +80,30 @@ An additional `general` section can be used for global settings:
 
 * `alarm_enable` - Whether to enable the alarm
 * `alarm_interval` - The interval at which the alarm should beep (in seconds)
+
+
+## MQTT Settings
+If you want to send the moisture saturation levels somewhere to build a dashboard, or log to a database, MQTT is a great way to do this. You'll need an MQTT broker set up somwhere, [Mosquitto](https://mosquitto.org/) is great choice and runs really well on a Raspberry Pi.
+
+Add the following settings to your `settings.yml` file:
+
+```yaml
+mqtt:
+  mqtt_host: localhost
+  mqtt_port: 1883
+  mqtt_client_id: plantMonitor
+  mqtt_username: plantpi
+  mqtt_password: pimoroni
+  mqtt_topic_root: plants/moisture
+  mqtt_qos: 2
+  mqtt_interval : 30
+```
+
+* `mqtt_host` - This is the hostname or IP address of the server where your MQTT broker is.
+* `mqtt_port` - This is the port number for the broker, usually `1883`.
+* `mqtt_client_id` - This is the Client ID for your monitor service, can be ignored if you dont mind what the broker sees this device as.
+* `mqtt_username` - If you have authentication enabled, this is the username.
+* `mqtt_password` - If you have authentication enabled, this is the password.
+* `mqtt_topic_root` - This is the MQTT topic where the sensor data will be sent.
+* `mqtt_qos` - The QoS Level to publish messages at. Default: `2`.
+* `mqtt_interval` - This is the time interval between publishing readings, in seconds.

@@ -23,5 +23,5 @@ mqtt:
   mqtt_password: pimoroni
   mqtt_debug: false
   mqtt_topic_root: plants/moisture
-  interval_s : 30
+  mqtt_interval : 30
 
