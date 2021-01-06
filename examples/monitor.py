@@ -1072,7 +1072,7 @@ class MqttController:
     def update(self):
         if self._enabled:
             self.mqttc.loop()
-            if time.time() - self._time_last_pub > self.interval_s:
+            if time.time() - self._time_last_pub > self.mqtt_interval:
                 moistureDict = {}
                 for channel in self.channels:
                     moistureDict[f'channel{channel.channel}'] = channel.sensor.saturation * 100
