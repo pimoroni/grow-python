@@ -529,6 +529,18 @@ class ChannelEditView(ChannelView, EditView):
                 "help": "Enable/disable this channel",
             },
             {
+                "title": "Watering Level",
+                "prop": "water_level",
+                "inc": 0.05,
+                "min": 0,
+                "max": 1.0,
+                "mode": "float",
+                "round": 2,
+                "format": lambda value: f"{value * 100:0.2f}%",
+                "help": "Saturation at which watering occurs",
+                "context": "sat",
+            },
+            {
                 "title": "Auto Water",
                 "prop": "auto_water",
                 "mode": "bool",
