@@ -865,7 +865,7 @@ class ViewController:
         self.views = views
         self._current_view = 0
         self._current_subview = 0
-    
+
     @property
     def home(self):
         return self._current_view == 0 and self._current_subview == 0
