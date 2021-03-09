@@ -529,6 +529,25 @@ class ChannelEditView(ChannelView, EditView):
                 "help": "Enable/disable this channel",
             },
             {
+                "title": "Watering Level",
+                "prop": "water_level",
+                "inc": 0.05,
+                "min": 0,
+                "max": 1.0,
+                "mode": "float",
+                "round": 2,
+                "format": lambda value: f"{value * 100:0.2f}%",
+                "help": "Saturation at which watering occurs",
+                "context": "sat",
+            },
+            {
+                "title": "Auto Water",
+                "prop": "auto_water",
+                "mode": "bool",
+                "format": lambda value: "Yes" if value else "No",
+                "help": "Enable/disable watering",
+            },
+            {
                 "title": "Wet Point",
                 "prop": "wet_point",
                 "inc": 0.5,
@@ -552,6 +571,39 @@ class ChannelEditView(ChannelView, EditView):
                 "help": "Frequency for fully dried soil",
                 "context": "hz",
             },
+            {
+                "title": "Pump Time",
+                "prop": "pump_time",
+                "inc": 0.05,
+                "min": 0.05,
+                "max": 2.0,
+                "mode": "float",
+                "round": 2,
+                "format": lambda value: f"{value:0.2f}sec",
+                "help": "Time to run pump"
+            },
+            {
+                "title": "Pump Speed",
+                "prop": "pump_speed",
+                "inc": 0.05,
+                "min": 0.05,
+                "max": 1.0,
+                "mode": "float",
+                "round": 2,
+                "format": lambda value: f"{value*100:0.0f}%",
+                "help": "Speed of pump"
+            },
+            {
+                "title": "Watering Delay",
+                "prop": "watering_delay",
+                "inc": 10,
+                "min": 30,
+                "max": 500,
+                "mode": "int",
+                "format": lambda value: f"{value:0.0f}sec",
+                "help": "Delay between waterings"
+            },
+
         ]
         EditView.__init__(self, image, options)
         ChannelView.__init__(self, image, channel)
@@ -582,9 +634,9 @@ class Channel:
         title=None,
         water_level=0.5,
         warn_level=0.5,
-        pump_speed=0.7,
-        pump_time=0.7,
-        watering_delay=30,
+        pump_speed=0.5,
+        pump_time=0.2,
+        watering_delay=60,
         wet_point=0.7,
         dry_point=26.7,
         icon=None,
@@ -880,6 +932,10 @@ class Config:
             "warn_level",
             "wet_point",
             "dry_point",
+            "watering_delay",
+            "auto_water",
+            "pump_time",
+            "pump_speed"
         ]
 
         self.general_settings = [

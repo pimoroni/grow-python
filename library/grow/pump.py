@@ -10,6 +10,9 @@ PUMP_PWM_FREQ = 10000
 PUMP_MAX_DUTY = 90
 
 
+global_lock = threading.Lock()
+
+
 class Pump(object):
     """Grow pump driver."""
 
@@ -42,8 +45,15 @@ class Pump(object):
         """Set pump speed (PWM duty cycle)."""
         if speed > 1.0 or speed < 0:
             raise ValueError("Speed must be between 0 and 1")
+
+        if speed == 0:
+            global_lock.release()
+        elif not global_lock.acquire(blocking=False):
+            return False
+
         self._pwm.ChangeDutyCycle(int(PUMP_MAX_DUTY * speed))
         self._speed = speed
+        return True
 
     def get_speed(self):
         """Return Pump speed (PWM duty cycle)."""
@@ -51,10 +61,10 @@ class Pump(object):
 
     def stop(self):
         """Stop the pump."""
-        self.set_speed(0)
         if self._timeout is not None:
             self._timeout.cancel()
             self._timeout = None
+        self.set_speed(0)
 
     def dose(self, speed, timeout=0.1, blocking=True, force=False):
         """Pulse the pump for timeout seconds.
@@ -64,19 +74,22 @@ class Pump(object):
         :param force: Applies only to non-blocking. If true, any previous dose will be replaced
 
         """
+
         if blocking:
-            self.set_speed(speed)
-            time.sleep(timeout)
-            self.stop()
-            return True
+            if self.set_speed(speed):
+                time.sleep(timeout)
+                self.stop()
+                return True
+
         else:
             if self._timeout is not None:
                 if self._timeout.is_alive():
                     if force:
                         self._timeout.cancel()
-                    else:
-                        return False
+
             self._timeout = threading.Timer(timeout, self.stop)
-            self.set_speed(speed)
-            self._timeout.start()
-            return True
+            if self.set_speed(speed):
+                self._timeout.start()
+                return True
+
+        return False
