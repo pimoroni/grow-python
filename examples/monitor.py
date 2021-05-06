@@ -1032,6 +1032,10 @@ def main():
     # Set up our canvas and prepare for drawing
     image = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(255, 255, 255))
 
+    # Setup blank image for darkness
+    image_blank = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
+
+
     # Pick a random selection of plant icons to display on screen
     channels = [
         Channel(1, 1, 1),
@@ -1065,8 +1069,13 @@ def main():
         """Settings:
 Alarm Enabled: {}
 Alarm Interval: {:.2f}s
+Low Light Set Screen To Black: {}
+Low Light Value {:.2f}
 """.format(
-            alarm.enabled, alarm.interval
+            alarm.enabled,
+            alarm.interval,
+            config.get_general().get("black_screen_when_light_low"),
+            config.get_general().get("light_level_low")
         )
     )
 
@@ -1119,11 +1128,18 @@ Alarm Interval: {:.2f}s
             if channel.alarm:
                 alarm.trigger()
 
-        alarm.update(light.get_lux() < 4.0)
+        light_level_low = light.get_lux() < config.get_general().get("light_level_low")
+
+        alarm.update(light_level_low)
 
         viewcontroller.update()
         viewcontroller.render()
-        display.display(image.convert("RGB"))
+
+        if light_level_low and config.get_general().get("black_screen_when_light_low"):
+            display.display(image_blank.convert("RGB"))
+
+        else:
+            display.display(image.convert("RGB"))
 
         config.set_general(
             {
