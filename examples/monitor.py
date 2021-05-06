@@ -935,7 +935,8 @@ class Config:
             "watering_delay",
             "auto_water",
             "pump_time",
-            "pump_speed"
+            "pump_speed",
+            "water_level",
         ]
 
         self.general_settings = [
