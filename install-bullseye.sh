@@ -234,6 +234,17 @@ if [ -d "examples" ]; then
 	fi
 fi
 
+if [ -d "service" ]; then
+	inform "Grow includes a service that runs on boot and monitors your plants."
+	if confirm "Would you like to install the service?"; then
+		cd service
+		sudo ./install.sh
+		echo "rm /usr/bin/grow" >> $UNINSTALLER
+		echo "rm -r /usr/share/grow-monitor" >> $UNINSTALLER
+		echo "rm /etc/default/grow" >> $UNINSTALLER
+	fi
+fi
+
 success "\nAll done!"
 inform "If this is your first time installing you should reboot for hardware changes to take effect.\n"
 inform "Find uninstall steps in $UNINSTALLER\n"
