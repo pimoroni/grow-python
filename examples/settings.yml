@@ -1,21 +1,35 @@
 channel1:
+  auto_water: false
   dry_point: 27
   enabled: true
+  pump_speed: 0.5
+  pump_time: 0.5
   warn_level: 0.2
+  watering_delay: 60
   wet_point: 3
 channel2:
+  auto_water: false
   dry_point: 27
   enabled: true
+  pump_speed: 0.5
+  pump_time: 0.5
   warn_level: 0.5
+  watering_delay: 60
   wet_point: 3
 channel3:
+  auto_water: false
   dry_point: 27
   enabled: true
+  pump_speed: 0.5
+  pump_time: 0.5
   warn_level: 0.4
+  watering_delay: 60
   wet_point: 3
 general:
   alarm_enable: true
   alarm_interval: 2
+  light_level_low: 4.0
+  black_screen_when_light_low: false
 mqtt:
   mqtt_host: localhost
   mqtt_port: 1883
@@ -24,4 +38,3 @@ mqtt:
   mqtt_debug: false
   mqtt_topic_root: plants/moisture
   mqtt_interval : 30
-

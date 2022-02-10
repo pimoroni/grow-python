@@ -531,6 +531,25 @@ class ChannelEditView(ChannelView, EditView):
                 "help": "Enable/disable this channel",
             },
             {
+                "title": "Watering Level",
+                "prop": "water_level",
+                "inc": 0.05,
+                "min": 0,
+                "max": 1.0,
+                "mode": "float",
+                "round": 2,
+                "format": lambda value: f"{value * 100:0.2f}%",
+                "help": "Saturation at which watering occurs",
+                "context": "sat",
+            },
+            {
+                "title": "Auto Water",
+                "prop": "auto_water",
+                "mode": "bool",
+                "format": lambda value: "Yes" if value else "No",
+                "help": "Enable/disable watering",
+            },
+            {
                 "title": "Wet Point",
                 "prop": "wet_point",
                 "inc": 0.5,
@@ -554,6 +573,39 @@ class ChannelEditView(ChannelView, EditView):
                 "help": "Frequency for fully dried soil",
                 "context": "hz",
             },
+            {
+                "title": "Pump Time",
+                "prop": "pump_time",
+                "inc": 0.05,
+                "min": 0.05,
+                "max": 2.0,
+                "mode": "float",
+                "round": 2,
+                "format": lambda value: f"{value:0.2f}sec",
+                "help": "Time to run pump"
+            },
+            {
+                "title": "Pump Speed",
+                "prop": "pump_speed",
+                "inc": 0.05,
+                "min": 0.05,
+                "max": 1.0,
+                "mode": "float",
+                "round": 2,
+                "format": lambda value: f"{value*100:0.0f}%",
+                "help": "Speed of pump"
+            },
+            {
+                "title": "Watering Delay",
+                "prop": "watering_delay",
+                "inc": 10,
+                "min": 30,
+                "max": 500,
+                "mode": "int",
+                "format": lambda value: f"{value:0.0f}sec",
+                "help": "Delay between waterings"
+            },
+
         ]
         EditView.__init__(self, image, options)
         ChannelView.__init__(self, image, channel)
@@ -584,9 +636,9 @@ class Channel:
         title=None,
         water_level=0.5,
         warn_level=0.5,
-        pump_speed=0.7,
-        pump_time=0.7,
-        watering_delay=30,
+        pump_speed=0.5,
+        pump_time=0.2,
+        watering_delay=60,
         wet_point=0.7,
         dry_point=26.7,
         icon=None,
@@ -815,7 +867,7 @@ class ViewController:
         self.views = views
         self._current_view = 0
         self._current_subview = 0
-    
+
     @property
     def home(self):
         return self._current_view == 0 and self._current_subview == 0
@@ -882,6 +934,11 @@ class Config:
             "warn_level",
             "wet_point",
             "dry_point",
+            "watering_delay",
+            "auto_water",
+            "pump_time",
+            "pump_speed",
+            "water_level",
         ]
 
         self.general_settings = [
@@ -1121,6 +1178,10 @@ def main():
     # Set up our canvas and prepare for drawing
     image = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(255, 255, 255))
 
+    # Setup blank image for darkness
+    image_blank = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
+
+
     # Pick a random selection of plant icons to display on screen
     channels = [
         Channel(1, 1, 1),
@@ -1154,8 +1215,13 @@ def main():
         """Settings:
 Alarm Enabled: {}
 Alarm Interval: {:.2f}s
+Low Light Set Screen To Black: {}
+Low Light Value {:.2f}
 """.format(
-            alarm.enabled, alarm.interval
+            alarm.enabled,
+            alarm.interval,
+            config.get_general().get("black_screen_when_light_low"),
+            config.get_general().get("light_level_low")
         )
     )
 
@@ -1212,12 +1278,19 @@ Alarm Interval: {:.2f}s
             if channel.alarm:
                 alarm.trigger()
 
-        alarm.update(light.get_lux() < 4.0)
+        light_level_low = light.get_lux() < config.get_general().get("light_level_low")
+
+        alarm.update(light_level_low)
 
         viewcontroller.update()
         viewcontroller.render()
         mqttController.update()
-        display.display(image.convert("RGB"))
+
+        if light_level_low and config.get_general().get("black_screen_when_light_low"):
+            display.display(image_blank.convert("RGB"))
+
+        else:
+            display.display(image.convert("RGB"))
 
         config.set_general(
             {
