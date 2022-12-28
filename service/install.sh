@@ -25,6 +25,10 @@ inform "Copying icons to /usr/share/grow-monitor...\n"
 mkdir -p /usr/share/grow-monitor/icons
 cp ../examples/icons/* /usr/share/grow-monitor/icons
 
+inform "Installing grow-api to /usr/bin/grow-monitor...\n"
+cp ../examples/grow-api.py /usr/bin/grow-api
+chmod +x /usr/bin/grow-api
+
 inform "Installing grow-monitor to /usr/bin/grow-monitor...\n"
 cp ../examples/monitor.py /usr/bin/grow-monitor
 chmod +x /usr/bin/grow-monitor

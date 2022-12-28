@@ -4,8 +4,9 @@ After=multi-user.target
 
 [Service]
 Type=simple
+User=pi
 WorkingDirectory=/usr/share/grow-monitor
-ExecStart=/usr/bin/grow-monitor /etc/default/grow
+ExecStart=/usr/bin/python3 /usr/bin/grow-api
 Restart=on-failure
 StandardOutput=syslog+console
 StandardError=syslog+console
