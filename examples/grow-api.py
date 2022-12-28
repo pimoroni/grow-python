@@ -25,3 +25,4 @@ def get_moistures():
                                read_sensor(2))
     return data
 
+app.run(host='0.0.0.0',port='5000')
