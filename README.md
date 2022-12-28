@@ -1,3 +1,7 @@
+# This fork implements a basic Flask API on top of the Grow HAT grow-monitor service
+
+I'm really enjoying playing around with the Grow HAT mini but felt it was lacking an API. I'm far from the first person to implement one but I thought it would be fun to give it a go.
+
 # Grow HAT Mini
 
 Designed as a tiny valet for your plants, Grow HAT mini will monitor the soil moiture for up to 3 plants, water them with tiny pumps, and show you their health on its small but informative screen. Learn more - https://shop.pimoroni.com/products/grow
