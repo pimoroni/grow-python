@@ -17,6 +17,8 @@ import yaml
 from grow import Piezo
 from grow.moisture import Moisture
 from grow.pump import Pump
+import json
+import paho.mqtt.client as mqtt
 
 
 FPS = 10
@@ -944,6 +946,11 @@ class Config:
             "alarm_interval",
         ]
 
+        self.mqtt_settings = [
+            "server",
+            "topics"
+        ]
+
     def load(self, settings_file="settings.yml"):
         if len(sys.argv) > 1:
             settings_file = sys.argv[1]
@@ -978,6 +985,9 @@ class Config:
     def get_channel(self, channel_id):
         return self.config.get("channel{}".format(channel_id), {})
 
+    def get_mqtt(self):
+        return self.config.get("mqtt")
+
     def set(self, section, settings):
         if isinstance(settings, dict):
             self.config[section].update(settings)
@@ -995,6 +1005,142 @@ class Config:
 
     def set_general(self, settings):
         self.set("general", settings)
+
+
+class MqttController:
+    def __init__(
+        self,
+        channels,
+        enabled=False,
+        mqtt_host="",
+        mqtt_port=1883,
+        mqtt_tls=False,
+        mqtt_client_id="",
+        mqtt_username=None,
+        mqtt_password=None,
+        mqtt_debug=False,
+        mqtt_keepalive=60,
+        mqtt_topic_root="plants/moisture",
+        mqtt_qos=2,
+        mqtt_interval=60
+        ):
+        self.channels = channels
+        self._enabled = enabled
+        self.mqtt_host = mqtt_host
+        self.mqtt_port = mqtt_port
+        self.mqtt_tls = mqtt_tls
+        self.mqtt_client_id = mqtt_client_id
+        self.mqtt_username = mqtt_username
+        self.mqtt_password = mqtt_password
+        self.mqtt_debug = mqtt_debug
+        self.mqtt_keepalive = mqtt_keepalive
+        self.mqtt_topic_root = mqtt_topic_root
+        self.mqtt_interval = mqtt_interval
+        self.mqtt_qos = mqtt_qos
+        self._connected = False
+        self._connecting = False
+        self._time_last_pub = time.time()
+        
+
+
+    def update_from_yml(self, config):
+        if config is not None:
+            self._enabled = True
+            self.mqtt_host = config.get("mqtt_host", self.mqtt_host)
+            self.mqtt_port = config.get("mqtt_port", self.mqtt_port)
+            self.mqtt_tls = config.get("mqtt_tls", self.mqtt_tls)
+            self.mqtt_client_id = config.get("mqtt_client_id", self.mqtt_client_id)
+            self.mqtt_username = config.get("mqtt_username", self.mqtt_username)
+            self.mqtt_password = config.get("mqtt_password", self.mqtt_password)
+            self.mqtt_debug = config.get("mqtt_debug", self.mqtt_debug)
+            self.mqtt_keepalive = config.get("mqtt_keepalive", self.mqtt_keepalive)
+            self.mqtt_topic_root = config.get("mqtt_topic_root", self.mqtt_topic_root)
+            self.mqtt_qos = config.get("mqtt_qos", self.mqtt_qos)
+            self.mqtt_interval = config.get("mqtt_interval", self.mqtt_interval)
+        else:
+            self._enabled = False
+    
+    def on_connect(self, mqttc, obj, flags, rc):
+        self._connected = True
+        logging.debug(f'mqtt_connect: RC: {rc}')
+
+    def on_message(self, mqttc, obj, msg):
+        logging.debug(f'mqtt_message: Topic: {msg.topic}, QOS: {msg.qos}, Payload: {msg.payload}')
+
+    def on_publish(self, mqttc, obj, mid):
+        logging.debug(f'mqtt_publish: MID: {mid}')
+
+    def on_subscribe(self, mqttc, obj, mid, granted_qos):
+        logging.debug(f'mqtt_subscribe: MID: {mid}, Granted QoS: {granted_qos}')
+
+    def on_log(self,mqttc, obj, level, string):
+        logging.debug(f'mqtt_log: {string}')
+
+    def connect(self):
+        if self._enabled:
+            self.connecting = True
+            self.mqttc = mqtt.Client()
+            #-- TODO - Add MQTT TLS Configuration
+            #if self.mqtt_tls:
+            #if usetls:
+            #if args.tls_version == "tlsv1.2":
+            #tlsVersion = ssl.PROTOCOL_TLSv1_2
+            #elif args.tls_version == "tlsv1.1":
+            #tlsVersion = ssl.PROTOCOL_TLSv1_1
+            #elif args.tls_version == "tlsv1":
+            #tlsVersion = ssl.PROTOCOL_TLSv1
+            #elif args.tls_version is None:
+            #tlsVersion = None
+            #else:
+            #print ("Unknown TLS version - ignoring")
+            #tlsVersion = None
+            #
+            #if not args.insecure:
+            #    cert_required = ssl.CERT_REQUIRED
+            #else:
+            #    cert_required = ssl.CERT_NONE
+            #    
+            #mqttc.tls_set(ca_certs=args.cacerts, certfile=None, keyfile=None, cert_reqs=cert_required, tls_version=tlsVersion)
+            #
+            #if args.insecure:
+            #    mqttc.tls_insecure_set(True)
+
+            if self.mqtt_username or self.mqtt_password:
+                self.mqttc.username_pw_set(self.mqtt_username, self.mqtt_password)
+
+            self.mqttc.on_message = self.on_message
+            self.mqttc.on_connect = self.on_connect
+            self.mqttc.on_publish = self.on_publish
+            self.mqttc.on_subscribe = self.on_subscribe
+
+            if self.mqtt_debug:
+                self.mqttc.on_log = self.on_log
+
+            logging.debug(f'mqtt: Connecting to: {self.mqtt_host}:{self.mqtt_port}')
+            rc = self.mqttc.connect(self.mqtt_host, self.mqtt_port, self.mqtt_keepalive)
+            logging.debug("mqtt Connect RC: " + str(rc))
+            #self.mqttc.loop_start()
+            self._connecting = False
+
+    def disconnect(self):
+        self.mqttc.disconnect()
+
+
+    def update(self):
+        if self._enabled:
+            self.mqttc.loop()
+            if time.time() - self._time_last_pub > self.mqtt_interval:
+                moistureDict = {}
+                for channel in self.channels:
+                    moistureDict[f'channel{channel.channel}'] = channel.sensor.saturation * 100
+                
+                value = json.dumps(moistureDict)
+                logging.info(f'mqtt: Publishing: {value} to {self.mqtt_topic_root} at QoS: {self.mqtt_qos}')
+                self.mqttc.publish(self.mqtt_topic_root, value,qos=self.mqtt_qos)
+                    
+                self._time_last_pub = time.time()
+
+
 
 
 def main():
@@ -1121,6 +1267,10 @@ Low Light Value {:.2f}
         ]
     )
 
+    mqttController = MqttController(channels)
+    mqttController.update_from_yml(config.get_mqtt())
+    mqttController.connect()
+
     while True:
         for channel in channels:
             config.set_channel(channel.channel, channel)
@@ -1134,6 +1284,7 @@ Low Light Value {:.2f}
 
         viewcontroller.update()
         viewcontroller.render()
+        mqttController.update()
 
         if light_level_low and config.get_general().get("black_screen_when_light_low"):
             display.display(image_blank.convert("RGB"))

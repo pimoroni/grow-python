@@ -30,3 +30,11 @@ general:
   alarm_interval: 2
   light_level_low: 4.0
   black_screen_when_light_low: false
+mqtt:
+  mqtt_host: localhost
+  mqtt_port: 1883
+  mqtt_username: plantpi
+  mqtt_password: pimoroni
+  mqtt_debug: false
+  mqtt_topic_root: plants/moisture
+  mqtt_interval : 30
