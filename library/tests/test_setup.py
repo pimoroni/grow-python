@@ -8,7 +8,7 @@ def test_moisture_setup(GPIO, smbus):
     ch2 = Moisture(channel=2)
     ch3 = Moisture(channel=3)
 
-    assert GPIO.setup.has_calls([
+    GPIO.setup.assert_has_calls([
         mock.call(ch1._gpio_pin, GPIO.IN),
         mock.call(ch2._gpio_pin, GPIO.IN),
         mock.call(ch3._gpio_pin, GPIO.IN)
@@ -34,14 +34,17 @@ def test_pump_setup(GPIO, smbus):
     ch2 = Pump(channel=2)
     ch3 = Pump(channel=3)
 
-    assert GPIO.setup.has_calls([
+    GPIO.setup.assert_has_calls([
         mock.call(ch1._gpio_pin, GPIO.OUT, initial=GPIO.LOW),
         mock.call(ch2._gpio_pin, GPIO.OUT, initial=GPIO.LOW),
         mock.call(ch3._gpio_pin, GPIO.OUT, initial=GPIO.LOW)
     ])
 
-    assert GPIO.PWM.has_calls([
+    GPIO.PWM.assert_has_calls([
         mock.call(ch1._gpio_pin, PUMP_PWM_FREQ),
+        mock.call().start(0),
         mock.call(ch2._gpio_pin, PUMP_PWM_FREQ),
-        mock.call(ch3._gpio_pin, PUMP_PWM_FREQ)
+        mock.call().start(0),
+        mock.call(ch3._gpio_pin, PUMP_PWM_FREQ),
+        mock.call().start(0)
     ])
