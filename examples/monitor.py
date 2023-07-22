@@ -1051,6 +1051,7 @@ def main():
 
     # Setup blank image for darkness
     image_blank = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
+    image_blank = image_blank.convert("RGB")
 
     # startup screen
     startup_view = StartupView(image)
@@ -1147,7 +1148,7 @@ Low Light Value {:.2f}
         light_level_low = light.get_lux() < config.get_general().get("light_level_low")
 
         if light_level_low and config.get_general().get("black_screen_when_light_low"):
-            display.display(image_blank.convert("RGB"))
+            display.display(image_blank)
 
         else:
             viewcontroller.render()
@@ -1162,10 +1163,8 @@ Low Light Value {:.2f}
         )
         config.save()
 
-    schedule.every(1.0 / FPS).seconds.do(display_loop, light=light, config=config, display=display, viewcontroller=viewcontroller, image=image, image_blank=image_blank )
-    schedule.every(3).seconds.do(update_config, config=config, alarm=alarm )
 
-    while True:
+    def update_loop(channels, alarm, light, config, viewcontroller):
         for channel in channels:
             config.set_channel(channel.channel, channel)
             channel.update()
@@ -1177,6 +1176,12 @@ Low Light Value {:.2f}
         alarm.update(light_level_low)
 
         viewcontroller.update()
+
+    schedule.every(1.0 / FPS).seconds.do(display_loop, light=light, config=config, display=display, viewcontroller=viewcontroller, image=image, image_blank=image_blank )
+    schedule.every(5).seconds.do(update_config, config=config, alarm=alarm )
+    schedule.every(3).seconds.do(update_config, channels=channels, alarm=alarm, light=light, config=config, viewcontroller=viewcontroller )
+
+    while True:
 
         schedule.run_pending()
 
