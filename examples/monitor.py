@@ -366,6 +366,22 @@ class EditView(View):
         return True
 
 
+class StartupView(View):
+    """Grow Monitor."""
+
+    def __init__(self, image):
+        EditView.__init__(self, image)
+
+    def render(self):
+        self.clear()
+        self._draw.text(
+            (28, 5),
+            "Grow Monitor starting...",
+            font=self.font,
+            fill=COLOR_WHITE,
+        )
+        View.render(self)
+
 class SettingsView(EditView):
     """Main settings."""
 
@@ -1035,6 +1051,13 @@ def main():
     # Setup blank image for darkness
     image_blank = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
 
+    # Setup blank image for darkness
+    image_starting = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
+    startup_view = StartupView(image)
+
+    startup_view.render()
+    startup_view = None
+
 
     # Pick a random selection of plant icons to display on screen
     channels = [
@@ -1133,12 +1156,12 @@ Low Light Value {:.2f}
         alarm.update(light_level_low)
 
         viewcontroller.update()
-        viewcontroller.render()
 
         if light_level_low and config.get_general().get("black_screen_when_light_low"):
             display.display(image_blank.convert("RGB"))
 
         else:
+            viewcontroller.render()
             display.display(image.convert("RGB"))
 
         config.set_general(
