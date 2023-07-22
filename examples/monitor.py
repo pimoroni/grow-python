@@ -1182,10 +1182,8 @@ Low Light Value {:.2f}
     schedule.every(3).seconds.do(update_loop, channels=channels, alarm=alarm, light=light, config=config, viewcontroller=viewcontroller )
 
     while True:
-
         schedule.run_pending()
-
-        time.sleep(1.0 / FPS)
+        time.sleep( schedule.idle_seconds() )
 
 
 if __name__ == "__main__":
