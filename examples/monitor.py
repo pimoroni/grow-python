@@ -1155,7 +1155,7 @@ Low Light Value {:.2f}
 
     schedule.every(1.0 / FPS).seconds.do(display_loop, light=light, config=config, display=display, viewcontroller=viewcontroller, image=image, image_blank=image_blank )
     schedule.every(5).seconds.do(update_config, config=config, alarm=alarm )
-    schedule.every(3).seconds.do(update_loop, channels=channels, alarm=alarm, light=light, config=config, viewcontroller=viewcontroller )
+    schedule.every(1).seconds.do(update_loop, channels=channels, alarm=alarm, light=light, config=config, viewcontroller=viewcontroller )
 
     while True:
         n = schedule.idle_seconds()
