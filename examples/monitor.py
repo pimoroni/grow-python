@@ -1013,6 +1013,38 @@ class Config:
     def set_general(self, settings):
         self.set("general", settings)
 
+def display_loop( light, config, display, viewcontroller, image, image_blank ):
+    light_level_low = light.get_lux() < config.get_general().get("light_level_low")
+
+    if light_level_low and config.get_general().get("black_screen_when_light_low"):
+        display.display(image_blank)
+
+    else:
+        viewcontroller.render()
+        display.display(image.convert("RGB"))
+
+def update_config(config, alarm):
+    config.set_general(
+        {
+            "alarm_enable": alarm.enabled,
+            "alarm_interval": alarm.interval,
+        }
+    )
+    config.save()
+
+
+def update_loop(channels, alarm, light, config, viewcontroller):
+    for channel in channels:
+        config.set_channel(channel.channel, channel)
+        channel.update()
+        if channel.alarm:
+            alarm.trigger()
+
+    light_level_low = light.get_lux() < config.get_general().get("light_level_low")
+
+    alarm.update(light_level_low)
+
+    viewcontroller.update()
 
 def main():
     def handle_button(pin):
@@ -1143,39 +1175,6 @@ Low Light Value {:.2f}
             ),
         ]
     )
-
-    def display_loop( light, config, display, viewcontroller, image, image_blank ):
-        light_level_low = light.get_lux() < config.get_general().get("light_level_low")
-
-        if light_level_low and config.get_general().get("black_screen_when_light_low"):
-            display.display(image_blank)
-
-        else:
-            viewcontroller.render()
-            display.display(image.convert("RGB"))
-
-    def update_config(config, alarm):
-        config.set_general(
-            {
-                "alarm_enable": alarm.enabled,
-                "alarm_interval": alarm.interval,
-            }
-        )
-        config.save()
-
-
-    def update_loop(channels, alarm, light, config, viewcontroller):
-        for channel in channels:
-            config.set_channel(channel.channel, channel)
-            channel.update()
-            if channel.alarm:
-                alarm.trigger()
-
-        light_level_low = light.get_lux() < config.get_general().get("light_level_low")
-
-        alarm.update(light_level_low)
-
-        viewcontroller.update()
 
     schedule.every(1.0 / FPS).seconds.do(display_loop, light=light, config=config, display=display, viewcontroller=viewcontroller, image=image, image_blank=image_blank )
     schedule.every(5).seconds.do(update_config, config=config, alarm=alarm )
