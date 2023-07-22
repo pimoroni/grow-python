@@ -370,7 +370,7 @@ class StartupView(View):
     """Grow Monitor."""
 
     def __init__(self, image):
-        EditView.__init__(self, image)
+        View.__init__(self, image)
 
     def render(self):
         self.clear()
@@ -1051,8 +1051,7 @@ def main():
     # Setup blank image for darkness
     image_blank = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
 
-    # Setup blank image for darkness
-    image_starting = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
+    # startup screen
     startup_view = StartupView(image)
 
     startup_view.render()
