@@ -18,6 +18,7 @@ from grow import Piezo
 from grow.moisture import Moisture
 from grow.pump import Pump
 
+import schedule
 
 FPS = 10
 
@@ -1055,7 +1056,6 @@ def main():
     startup_view = StartupView(image)
 
     startup_view.render()
-    startup_view = None
 
 
     # Pick a random selection of plant icons to display on screen
@@ -1143,6 +1143,28 @@ Low Light Value {:.2f}
         ]
     )
 
+    def display_loop( light, config, display, viewcontroller, image, image_blank ):
+        light_level_low = light.get_lux() < config.get_general().get("light_level_low")
+
+        if light_level_low and config.get_general().get("black_screen_when_light_low"):
+            display.display(image_blank.convert("RGB"))
+
+        else:
+            viewcontroller.render()
+            display.display(image.convert("RGB"))
+
+    def update_config(config, alarm):
+        config.set_general(
+            {
+                "alarm_enable": alarm.enabled,
+                "alarm_interval": alarm.interval,
+            }
+        )
+        config.save()
+
+    schedule.every(1.0 / FPS).seconds.do(display_loop, light=light, config=config, display=display, viewcontroller=viewcontroller, image=image, image_blank=image_blank )
+    schedule.every(3).seconds.do(update_config, config=config, alarm=alarm )
+
     while True:
         for channel in channels:
             config.set_channel(channel.channel, channel)
@@ -1156,21 +1178,7 @@ Low Light Value {:.2f}
 
         viewcontroller.update()
 
-        if light_level_low and config.get_general().get("black_screen_when_light_low"):
-            display.display(image_blank.convert("RGB"))
-
-        else:
-            viewcontroller.render()
-            display.display(image.convert("RGB"))
-
-        config.set_general(
-            {
-                "alarm_enable": alarm.enabled,
-                "alarm_interval": alarm.interval,
-            }
-        )
-
-        config.save()
+        schedule.run_pending()
 
         time.sleep(1.0 / FPS)
 
