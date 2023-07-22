@@ -367,22 +367,6 @@ class EditView(View):
         return True
 
 
-class StartupView(View):
-    """Grow Monitor."""
-
-    def __init__(self, image):
-        View.__init__(self, image)
-
-    def render(self):
-        self.clear()
-        self._draw.text(
-            (28, 5),
-            "Grow Monitor starting...",
-            font=self.font,
-            fill=COLOR_WHITE,
-        )
-        View.render(self)
-
 class SettingsView(EditView):
     """Main settings."""
 
@@ -1082,14 +1066,7 @@ def main():
     image = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(255, 255, 255))
 
     # Setup blank image for darkness
-    image_blank = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
-    image_blank = image_blank.convert("RGB")
-
-    # startup screen
-    startup_view = StartupView(image)
-
-    startup_view.render()
-
+    image_blank = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
 
     # Pick a random selection of plant icons to display on screen
     channels = [
