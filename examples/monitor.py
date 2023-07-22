@@ -20,7 +20,7 @@ from grow.pump import Pump
 
 import schedule
 
-FPS = 10
+FPS = 5
 
 BUTTONS = [5, 6, 16, 24]
 LABELS = ["A", "B", "X", "Y"]
