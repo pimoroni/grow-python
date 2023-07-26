@@ -1163,6 +1163,5 @@ Low Light Value {:.2f}
             time.sleep(n)
         schedule.run_pending()
 
-
 if __name__ == "__main__":
     main()
