@@ -18,6 +18,7 @@ from grow import Piezo
 from grow.moisture import Moisture
 from grow.pump import Pump
 
+import schedule
 
 FPS = 10
 
@@ -996,6 +997,38 @@ class Config:
     def set_general(self, settings):
         self.set("general", settings)
 
+def display_loop( light, config, display, viewcontroller, image, image_blank ):
+    light_level_low = light.get_lux() < config.get_general().get("light_level_low")
+
+    if light_level_low and config.get_general().get("black_screen_when_light_low"):
+        display.display(image_blank)
+
+    else:
+        viewcontroller.render()
+        display.display(image.convert("RGB"))
+
+def update_config(config, alarm):
+    config.set_general(
+        {
+            "alarm_enable": alarm.enabled,
+            "alarm_interval": alarm.interval,
+        }
+    )
+    config.save()
+
+
+def update_loop(channels, alarm, light, config, viewcontroller):
+    for channel in channels:
+        config.set_channel(channel.channel, channel)
+        channel.update()
+        if channel.alarm:
+            alarm.trigger()
+
+    light_level_low = light.get_lux() < config.get_general().get("light_level_low")
+
+    alarm.update(light_level_low)
+
+    viewcontroller.update()
 
 def main():
     def handle_button(pin):
@@ -1033,8 +1066,7 @@ def main():
     image = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(255, 255, 255))
 
     # Setup blank image for darkness
-    image_blank = Image.new("RGBA", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
-
+    image_blank = Image.new("RGB", (DISPLAY_WIDTH, DISPLAY_HEIGHT), color=(0, 0, 0))
 
     # Pick a random selection of plant icons to display on screen
     channels = [
@@ -1121,37 +1153,15 @@ Low Light Value {:.2f}
         ]
     )
 
+    schedule.every(1.0 / FPS).seconds.do(display_loop, light=light, config=config, display=display, viewcontroller=viewcontroller, image=image, image_blank=image_blank )
+    schedule.every(5).seconds.do(update_config, config=config, alarm=alarm )
+    schedule.every(0.25).seconds.do(update_loop, channels=channels, alarm=alarm, light=light, config=config, viewcontroller=viewcontroller )
+
     while True:
-        for channel in channels:
-            config.set_channel(channel.channel, channel)
-            channel.update()
-            if channel.alarm:
-                alarm.trigger()
-
-        light_level_low = light.get_lux() < config.get_general().get("light_level_low")
-
-        alarm.update(light_level_low)
-
-        viewcontroller.update()
-
-        if light_level_low and config.get_general().get("black_screen_when_light_low"):
-            display.display(image_blank.convert("RGB"))
-
-        else:
-            viewcontroller.render()
-            display.display(image.convert("RGB"))
-
-        config.set_general(
-            {
-                "alarm_enable": alarm.enabled,
-                "alarm_interval": alarm.interval,
-            }
-        )
-
-        config.save()
-
-        time.sleep(1.0 / FPS)
-
+        n = schedule.idle_seconds()
+        if n > 0:
+            time.sleep(n)
+        schedule.run_pending()
 
 if __name__ == "__main__":
     main()
