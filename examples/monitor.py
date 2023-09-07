@@ -1135,10 +1135,11 @@ Low Light Value {:.2f}
         viewcontroller.update()
 
         if light_level_low and config.get_general().get("black_screen_when_light_low"):
+            display.sleep()
             display.display(image_blank.convert("RGB"))
-
         else:
             viewcontroller.render()
+            display.wake()
             display.display(image.convert("RGB"))
 
         config.set_general(
