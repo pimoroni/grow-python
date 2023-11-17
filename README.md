@@ -2,10 +2,10 @@
 
 Designed as a tiny valet for your plants, Grow HAT mini will monitor the soil moiture for up to 3 plants, water them with tiny pumps, and show you their health on its small but informative screen. Learn more - https://shop.pimoroni.com/products/grow
 
-[![Build Status](https://travis-ci.com/pimoroni/enviroplus-python.svg?branch=master)](https://travis-ci.com/pimoroni/grow-python)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/pimoroni/grow-python/test.yml?branch=main)](https://github.com/pimoroni/grow-python/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/pimoroni/grow-python/badge.svg?branch=master)](https://coveralls.io/github/pimoroni/grow-python?branch=master)
-[![PyPi Package](https://img.shields.io/pypi/v/enviroplus.svg)](https://pypi.python.org/pypi/growhat)
-[![Python Versions](https://img.shields.io/pypi/pyversions/enviroplus.svg)](https://pypi.python.org/pypi/growhat)
+[![PyPi Package](https://img.shields.io/pypi/v/growhat.svg)](https://pypi.python.org/pypi/growhat)
+[![Python Versions](https://img.shields.io/pypi/pyversions/growhat.svg)](https://pypi.python.org/pypi/growhat)
 
 # Installing
 
@@ -55,3 +55,14 @@ You should read the following to get up and running with our monitoring script:
 * GPIO Pinout - https://pinout.xyz/pinout/grow_hat_mini
 * Support forums - http://forums.pimoroni.com/c/support
 * Discord - https://discord.gg/hr93ByC
+
+# Changelog
+0.0.2
+-----
+
+* Add mutually exclusive locking to pumps to avoid brownout running multiple pumps at once
+
+0.0.1
+-----
+
+* Initial Release

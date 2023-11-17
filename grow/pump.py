@@ -1,6 +1,7 @@
-import time
 import atexit
 import threading
+import time
+
 import RPi.GPIO as GPIO
 
 PUMP_1_PIN = 17

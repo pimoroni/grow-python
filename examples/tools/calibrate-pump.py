@@ -1,14 +1,13 @@
-import time
 import logging
+import time
+
 import RPi.GPIO as GPIO
-
-from PIL import Image, ImageDraw, ImageFont
-from fonts.ttf import RobotoMedium as UserFont
-
 import ST7735
+from fonts.ttf import RobotoMedium as UserFont
+from PIL import Image, ImageDraw, ImageFont
+
 from grow.moisture import Moisture
 from grow.pump import Pump
-
 
 """
 Auto water a single target with the channel/pump selected below.

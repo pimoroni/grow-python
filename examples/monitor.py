@@ -10,14 +10,13 @@ import time
 import ltr559
 import RPi.GPIO as GPIO
 import ST7735
+import yaml
 from fonts.ttf import RobotoMedium as UserFont
 from PIL import Image, ImageDraw, ImageFont
 
-import yaml
 from grow import Piezo
 from grow.moisture import Moisture
 from grow.pump import Pump
-
 
 FPS = 10
 
