@@ -37,7 +37,7 @@ sudo apt install python3-setuptools python3-pip python3-yaml python3-smbus pytho
 
 * Run `sudo pip3 install growhat`
 
-**Note** this wont perform any of the required configuration changes on your Pi, you may additionally need to:
+**Note** this won't perform any of the required configuration changes on your Pi, you may additionally need to:
 
 * Enable i2c: `sudo raspi-config nonint do_i2c 0`
 * Enable SPI: `sudo raspi-config nonint do_spi 0`

@@ -174,7 +174,7 @@ try:
             fill=(255, 255, 255) if mode == 2 else (128, 128, 128),
         )
 
-        # Button lavel backgrounds
+        # Button label backgrounds
         draw.rectangle((0, 0, 42, 14), (255, 255, 255))
         draw.rectangle((display.width - 15, 0, display.width, 14), (255, 255, 255))
         draw.rectangle(

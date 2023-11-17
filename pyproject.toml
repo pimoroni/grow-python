@@ -88,6 +88,7 @@ line-length = 200
 
 [tool.codespell]
 skip = """
+./service/install.sh,\
 ./.tox,\
 ./.egg,\
 ./.git,\
