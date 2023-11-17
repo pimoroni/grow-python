@@ -2,7 +2,6 @@
 import logging
 import math
 import pathlib
-import random
 import sys
 import threading
 import time
@@ -132,7 +131,6 @@ class View:
 
         # Given a rectangle, reflow and scale text to fit, centred
         while font.size > 0:
-            space_width = font.getsize(" ")[0]
             line_height = int(font.size * line_spacing)
             max_lines = math.floor(height / line_height)
             lines = []
@@ -193,7 +191,6 @@ class MainView(View):
         bar_margin = 2
         bar_width = 30
         label_width = 16
-        label_height = 16
         label_y = 0
 
         x = [
@@ -688,14 +685,12 @@ class Channel:
         self._dry_point = dry_point
         self.sensor.set_dry_point(dry_point)
 
-    def warn_color(self):
-        value = self.sensor.moisture
-
     def indicator_color(self, value):
         value = 1.0 - value
 
         if value == 1.0:
             return self.colors[-1]
+
         if value == 0.0:
             return self.colors[0]
 
