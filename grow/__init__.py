@@ -1,8 +1,9 @@
 __version__ = '0.0.2'
 
-import time
 import atexit
 import threading
+import time
+
 import RPi.GPIO as GPIO
 
 

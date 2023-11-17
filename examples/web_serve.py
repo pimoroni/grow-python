@@ -3,10 +3,12 @@
 License: MIT
 Description: Web API for moisture readings: http://<your-pi-host>:8080/
 """
-from functools import partial
 import json
 import logging
+from functools import partial
+
 from aiohttp import web
+
 from grow.moisture import Moisture
 
 json_response = partial(web.json_response, dumps=partial(json.dumps, default=str))

@@ -1,31 +1,31 @@
 #!/bin/bash
-
-CONFIG=/boot/config.txt
+LIBRARY_NAME=`grep -m 1 name pyproject.toml | awk -F" = " '{print substr($2,2,length($2)-2)}'`
+MODULE_NAME="grow"
+CONFIG_FILE=config.txt
+CONFIG_DIR="/boot/firmware"
 DATESTAMP=`date "+%Y-%m-%d-%H-%M-%S"`
 CONFIG_BACKUP=false
 APT_HAS_UPDATED=false
-USER_HOME=/home/$SUDO_USER
-RESOURCES_TOP_DIR=$USER_HOME/Pimoroni
+RESOURCES_TOP_DIR=$HOME/Pimoroni
+VENV_BASH_SNIPPET=$RESOURCES_DIR/auto_venv.sh
+VENV_DIR=$HOME/.virtualenvs/pimoroni
 WD=`pwd`
-USAGE="sudo ./install.sh (--unstable)"
+USAGE="./install.sh (--unstable)"
 POSITIONAL_ARGS=()
+FORCE=false
 UNSTABLE=false
-CODENAME=`lsb_release -sc`
+PYTHON="python"
 
-if [[ $CODENAME == "bullseye" ]]; then
-	bash ./install-bullseye.sh $@
-	exit $?
-fi
 
 user_check() {
-	if [ $(id -u) -ne 0 ]; then
-		printf "Script must be run as root. Try 'sudo ./install.sh'\n"
+	if [ $(id -u) -eq 0 ]; then
+		printf "Script should not be run as root. Try './install.sh'\n"
 		exit 1
 	fi
 }
 
 confirm() {
-	if [ "$FORCE" == '-y' ]; then
+	if $FORCE; then
 		true
 	else
 		read -r -p "$1 [y/N] " response < /dev/tty
@@ -58,16 +58,72 @@ warning() {
 	echo -e "$(tput setaf 1)$1$(tput sgr0)"
 }
 
+find_config() {
+	if [ ! -f "$CONFIG_DIR/$CONFIG_FILE" ]; then
+		CONFIG_DIR="/boot"
+		if [ ! -f "$CONFIG_DIR/$CONFIG_FILE"]; then
+			warning "Could not find $CONFIG_FILE!"
+			exit 1
+		fi
+    else
+        if [ -f "/boot/$CONFIG_FILE" ] && [ ! -L "/boot/$CONFIG_FILE" ]; then
+            warning "Oops! It looks like /boot/$CONFIG_FILE is not a link to $CONFIG_DIR/$CONFIG_FILE"
+            warning "You might want to fix this!"
+        fi
+	fi
+    inform "Using $CONFIG_FILE in $CONFIG_DIR"
+}
+
+venv_bash_snippet() {
+	if [ ! -f $VENV_BASH_SNIPPET ]; then
+		cat << EOF > $VENV_BASH_SNIPPET
+# Add `source $RESOURCES_DIR/auto_venv.sh` to your ~/.bashrc to activate
+# the Pimoroni virtual environment automagically!
+VENV_DIR="$VENV_DIR"
+if [ ! -f \$VENV_DIR/bin/activate ]; then
+  printf "Creating user Python environment in \$VENV_DIR, please wait...\n"
+  mkdir -p \$VENV_DIR
+  python3 -m venv --system-site-packages \$VENV_DIR
+fi
+printf " ↓ ↓ ↓ ↓   Hello, we've activated a Python venv for you. To exit, type \"deactivate\".\n"
+source \$VENV_DIR/bin/activate
+EOF
+	fi
+}
+
+venv_check() {
+	PYTHON_BIN=`which $PYTHON`
+	if [[ $VIRTUAL_ENV == "" ]] || [[ $PYTHON_BIN != $VIRTUAL_ENV* ]]; then
+		printf "This script should be run in a virtual Python environment.\n"
+		if confirm "Would you like us to create one for you?"; then
+			if [ ! -f $VENV_DIR/bin/activate ]; then
+				inform "Creating virtual Python environment in $VENV_DIR, please wait...\n"
+				mkdir -p $VENV_DIR
+				/usr/bin/python3 -m venv $VENV_DIR --system-site-packages
+				venv_bash_snippet
+			else
+				inform "Found existing virtual Python environment in $VENV_DIR\n"
+			fi
+			inform "Activating virtual Python environment in $VENV_DIR..."
+			inform "source $VENV_DIR/bin/activate\n"
+			source $VENV_DIR/bin/activate
+
+		else
+			exit 1
+		fi
+	fi
+}
+
 function do_config_backup {
 	if [ ! $CONFIG_BACKUP == true ]; then
 		CONFIG_BACKUP=true
 		FILENAME="config.preinstall-$LIBRARY_NAME-$DATESTAMP.txt"
-		inform "Backing up $CONFIG to /boot/$FILENAME\n"
-		cp $CONFIG /boot/$FILENAME
+		inform "Backing up $CONFIG_DIR/$CONFIG_FILE to $CONFIG_DIR/$FILENAME\n"
+		sudo cp $CONFIG_DIR/$CONFIG_FILE $CONFIG_DIR/$FILENAME
 		mkdir -p $RESOURCES_TOP_DIR/config-backups/
-		cp $CONFIG $RESOURCES_TOP_DIR/config-backups/$FILENAME
+		cp $CONFIG_DIR/$CONFIG_FILE $RESOURCES_TOP_DIR/config-backups/$FILENAME
 		if [ -f "$UNINSTALLER" ]; then
-			echo "cp $RESOURCES_TOP_DIR/config-backups/$FILENAME $CONFIG" >> $UNINSTALLER
+			echo "cp $RESOURCES_TOP_DIR/config-backups/$FILENAME $CONFIG_DIR/$CONFIG_FILE" >> $UNINSTALLER
 		fi
 	fi
 }
@@ -88,14 +144,18 @@ function apt_pkg_install {
 	if ! [ "$PACKAGES" == "" ]; then
 		echo "Installing missing packages: $PACKAGES"
 		if [ ! $APT_HAS_UPDATED ]; then
-			apt update
+			sudo apt update
 			APT_HAS_UPDATED=true
 		fi
-		apt install -y $PACKAGES
+		sudo apt install -y $PACKAGES
 		if [ -f "$UNINSTALLER" ]; then
-			echo "apt uninstall -y $PACKAGES"
+			echo "apt uninstall -y $PACKAGES" >> $UNINSTALLER
 		fi
 	fi
+}
+
+function pip_pkg_install {
+	PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring $PYTHON -m pip install --upgrade "$@"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -103,6 +163,15 @@ while [[ $# -gt 0 ]]; do
 	case $K in
 	-u|--unstable)
 		UNSTABLE=true
+		shift
+		;;
+	-f|--force)
+		FORCE=true
+		shift
+		;;
+	-p|--python)
+		PYTHON=$2
+		shift
 		shift
 		;;
 	*)
@@ -117,28 +186,31 @@ while [[ $# -gt 0 ]]; do
 done
 
 user_check
+venv_check
 
-apt_pkg_install python-configparser
+if [ ! -f `which $PYTHON` ]; then
+	printf "Python path $PYTHON not found!\n"
+	exit 1
+fi
 
-CONFIG_VARS=`python - <<EOF
-from configparser import ConfigParser
-c = ConfigParser()
-c.read('library/setup.cfg')
-p = dict(c['pimoroni'])
-# Convert multi-line config entries into bash arrays
-for k in p.keys():
-    fmt = '"{}"'
-    if '\n' in p[k]:
-        p[k] = "'\n\t'".join(p[k].split('\n')[1:])
-        fmt = "('{}')"
-    p[k] = fmt.format(p[k])
+PYTHON_VER=`$PYTHON --version`
+
+printf "$LIBRARY_NAME Python Library: Installer\n\n"
+
+inform "Checking Dependencies. Please wait..."
+
+pip_pkg_install toml
+
+CONFIG_VARS=`$PYTHON - <<EOF
+import toml
+config = toml.load("pyproject.toml")
+p = dict(config['tool']['pimoroni'])
+# Convert list config entries into bash arrays
+for k, v in p.items():
+    v = "'\n\t'".join(v)
+    p[k] = f"('{v}')"
 print("""
-LIBRARY_NAME="{name}"
-LIBRARY_VERSION="{version}"
-""".format(**c['metadata']))
-print("""
-PY3_DEPS={py3deps}
-PY2_DEPS={py2deps}
+APT_PACKAGES={apt_packages}
 SETUP_CMDS={commands}
 CONFIG_TXT={configtxt}
 """.format(**p))
@@ -154,6 +226,13 @@ eval $CONFIG_VARS
 RESOURCES_DIR=$RESOURCES_TOP_DIR/$LIBRARY_NAME
 UNINSTALLER=$RESOURCES_DIR/uninstall.sh
 
+RES_DIR_OWNER=`stat -c "%U" $RESOURCES_TOP_DIR`
+
+if [[ "$RES_DIR_OWNER" == "root" ]]; then
+	warning "\n\nFixing $RESOURCES_TOP_DIR permissions!\n\n"
+	sudo chown -R $USER:$USER $RESOURCES_TOP_DIR
+fi
+
 mkdir -p $RESOURCES_DIR
 
 cat << EOF > $UNINSTALLER
@@ -161,9 +240,8 @@ printf "It's recommended you run these steps manually.\n"
 printf "If you want to run the full script, open it in\n"
 printf "an editor and remove 'exit 1' from below.\n"
 exit 1
+source $VIRTUAL_ENV/bin/activate
 EOF
-
-printf "$LIBRARY_NAME $LIBRARY_VERSION Python Library: Installer\n\n"
 
 if $UNSTABLE; then
 	warning "Installing unstable library from source.\n\n"
@@ -171,40 +249,26 @@ else
 	printf "Installing stable library from pypi.\n\n"
 fi
 
-cd library
-
-printf "Installing for Python 2..\n"
-apt_pkg_install "${PY2_DEPS[@]}"
+inform "Installing for $PYTHON_VER...\n"
+apt_pkg_install "${APT_PACKAGES[@]}"
 if $UNSTABLE; then
-	python setup.py install > /dev/null
+	pip_pkg_install .
 else
-	pip install --upgrade $LIBRARY_NAME
+	pip_pkg_install $LIBRARY_NAME
 fi
 if [ $? -eq 0 ]; then
 	success "Done!\n"
-	echo "pip uninstall $LIBRARY_NAME" >> $UNINSTALLER
-fi
-
-if [ -f "/usr/bin/python3" ]; then
-	printf "Installing for Python 3..\n"
-	apt_pkg_install "${PY3_DEPS[@]}"
-	if $UNSTABLE; then
-		python3 setup.py install > /dev/null
-	else
-		pip3 install --upgrade $LIBRARY_NAME
-	fi
-	if [ $? -eq 0 ]; then
-		success "Done!\n"
-		echo "pip3 uninstall $LIBRARY_NAME" >> $UNINSTALLER
-	fi
+	echo "$PYTHON -m pip uninstall $LIBRARY_NAME" >> $UNINSTALLER
 fi
 
 cd $WD
 
+find_config
+
 for ((i = 0; i < ${#SETUP_CMDS[@]}; i++)); do
 	CMD="${SETUP_CMDS[$i]}"
-	# Attempt to catch anything that touches /boot/config.txt and trigger a backup
-	if [[ "$CMD" == *"raspi-config"* ]] || [[ "$CMD" == *"$CONFIG"* ]] || [[ "$CMD" == *"\$CONFIG"* ]]; then
+	# Attempt to catch anything that touches config.txt and trigger a backup
+	if [[ "$CMD" == *"raspi-config"* ]] || [[ "$CMD" == *"$CONFIG_DIR/$CONFIG_FILE"* ]] || [[ "$CMD" == *"\$CONFIG_DIR/\$CONFIG_FILE"* ]]; then
 		do_config_backup
 	fi
 	eval $CMD
@@ -214,10 +278,10 @@ for ((i = 0; i < ${#CONFIG_TXT[@]}; i++)); do
 	CONFIG_LINE="${CONFIG_TXT[$i]}"
 	if ! [ "$CONFIG_LINE" == "" ]; then
 		do_config_backup
-		inform "Adding $CONFIG_LINE to $CONFIG\n"
-		sed -i "s/^#$CONFIG_LINE/$CONFIG_LINE/" $CONFIG
-		if ! grep -q "^$CONFIG_LINE" $CONFIG; then
-			printf "$CONFIG_LINE\n" >> $CONFIG
+		inform "Adding $CONFIG_LINE to $CONFIG_DIR/$CONFIG_FILE\n"
+		sudo sed -i "s/^#$CONFIG_LINE/$CONFIG_LINE/" $CONFIG_DIR/$CONFIG_FILE
+		if ! grep -q "^$CONFIG_LINE" $CONFIG_DIR/$CONFIG_FILE; then
+			printf "$CONFIG_LINE\n" | sudo tee --append $CONFIG_DIR/$CONFIG_FILE
 		fi
 	fi
 done
@@ -231,14 +295,17 @@ if [ -d "examples" ]; then
 	fi
 fi
 
-if [ -d "service" ]; then
-	inform "Grow includes a service that runs on boot and monitors your plants."
-	if confirm "Would you like to install the service?"; then
-		cd service
-		sudo ./install.sh
-		echo "rm /usr/bin/grow" >> $UNINSTALLER
-		echo "rm -r /usr/share/grow-monitor" >> $UNINSTALLER
-		echo "rm /etc/default/grow" >> $UNINSTALLER
+printf "\n"
+
+if confirm "Would you like to generate documentation?"; then
+	pip_pkg_install pdoc
+	printf "Generating documentation.\n"
+	$PYTHON -m pdoc $MODULE_NAME -o $RESOURCES_DIR/docs > /dev/null
+	if [ $? -eq 0 ]; then
+		inform "Documentation saved to $RESOURCES_DIR/docs"
+		success "Done!"
+	else
+		warning "Error: Failed to generate documentation."
 	fi
 fi
 

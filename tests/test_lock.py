@@ -2,7 +2,7 @@ import time
 
 
 def test_pumps_actually_stop(GPIO, smbus):
-    from grow.pump import Pump, global_lock
+    from grow.pump import Pump
 
     ch1 = Pump(channel=1)
 

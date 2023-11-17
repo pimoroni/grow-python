@@ -28,7 +28,7 @@ def test_moisture_read(GPIO, smbus):
 
 
 def test_pump_setup(GPIO, smbus):
-    from grow.pump import Pump, PUMP_PWM_FREQ
+    from grow.pump import PUMP_PWM_FREQ, Pump
 
     ch1 = Pump(channel=1)
     ch2 = Pump(channel=2)

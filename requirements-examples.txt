@@ -1,0 +1,3 @@
+pyyaml
+pillow>=10.0.0
+numpy

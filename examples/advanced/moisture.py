@@ -2,7 +2,6 @@ import time
 
 from grow.moisture import Moisture
 
-
 print("""moisture.py - Print out sensor reading in Hz
 
 Press Ctrl+C to exit!
