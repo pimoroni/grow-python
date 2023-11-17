@@ -1,7 +1,7 @@
 import time
 
 
-def test_pumps_actually_stop(GPIO, smbus):
+def test_pumps_actually_stop(gpiod, smbus2):
     from grow.pump import Pump
 
     ch1 = Pump(channel=1)
@@ -11,7 +11,7 @@ def test_pumps_actually_stop(GPIO, smbus):
     assert ch1.get_speed() == 0
 
 
-def test_pumps_are_mutually_exclusive(GPIO, smbus):
+def test_pumps_are_mutually_exclusive(gpiod, smbus2):
     from grow.pump import Pump, global_lock
 
     ch1 = Pump(channel=1)
@@ -29,7 +29,7 @@ def test_pumps_are_mutually_exclusive(GPIO, smbus):
     assert ch3.dose(speed=0.5, blocking=False) is False
 
 
-def test_pumps_run_sequentially(GPIO, smbus):
+def test_pumps_run_sequentially(gpiod, smbus2):
     from grow.pump import Pump, global_lock
 
     ch1 = Pump(channel=1)

@@ -18,31 +18,20 @@ class SMBusFakeDevice(MockSMBus):
 @pytest.fixture(scope='function', autouse=True)
 def cleanup():
     yield None
-    try:
-        del sys.modules['grow']
-    except KeyError:
-        pass
-    try:
-        del sys.modules['grow.moisture']
-    except KeyError:
-        pass
-    try:
-        del sys.modules['grow.pump']
-    except KeyError:
-        pass
+    for module in ['grow', 'grow.moisture', 'grow.pump']:
+        try:
+            del sys.modules[module]
+        except KeyError:
+            continue
 
 
 @pytest.fixture(scope='function', autouse=False)
 def GPIO():
-    """Mock RPi.GPIO module."""
-    GPIO = mock.MagicMock()
-    # Fudge for Python < 37 (possibly earlier)
-    sys.modules['RPi'] = mock.Mock()
-    sys.modules['RPi'].GPIO = GPIO
-    sys.modules['RPi.GPIO'] = GPIO
-    yield GPIO
-    del sys.modules['RPi']
-    del sys.modules['RPi.GPIO']
+    """Mock gpiod module."""
+    gpiod = mock.MagicMock()
+    sys.modules['gpiod'] = gpiod
+    yield gpiod
+    del sys.modules['gpiod']
 
 
 @pytest.fixture(scope='function', autouse=False)
@@ -55,13 +44,13 @@ def spidev():
 
 
 @pytest.fixture(scope='function', autouse=False)
-def smbus():
-    """Mock smbus module."""
-    smbus = mock.MagicMock()
-    smbus.SMBus = SMBusFakeDevice
-    sys.modules['smbus'] = smbus
-    yield smbus
-    del sys.modules['smbus']
+def smbus2():
+    """Mock smbus2 module."""
+    smbus2 = mock.MagicMock()
+    smbus2.SMBus = SMBusFakeDevice
+    sys.modules['smbus2'] = smbus2
+    yield smbus2
+    del sys.modules['smbus2']
 
 
 @pytest.fixture(scope='function', autouse=False)
