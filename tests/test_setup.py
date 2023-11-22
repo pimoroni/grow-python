@@ -1,7 +1,7 @@
 import mock
 
 
-def test_moisture_setup(GPIO, smbus):
+def test_moisture_setup(gpiod, smbus2):
     from grow.moisture import Moisture
 
     ch1 = Moisture(channel=1)
@@ -15,7 +15,7 @@ def test_moisture_setup(GPIO, smbus):
     ])
 
 
-def test_moisture_read(GPIO, smbus):
+def test_moisture_read(gpiod, smbus2):
     from grow.moisture import Moisture
 
     assert Moisture(channel=1).saturation == 1.0
@@ -27,7 +27,7 @@ def test_moisture_read(GPIO, smbus):
     assert Moisture(channel=3).moisture == 0
 
 
-def test_pump_setup(GPIO, smbus):
+def test_pump_setup(gpiod, smbus2):
     from grow.pump import PUMP_PWM_FREQ, Pump
 
     ch1 = Pump(channel=1)
