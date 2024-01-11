@@ -1,22 +1,23 @@
 #!/bin/bash
+#shellcheck disable=SC2312
 
 user_check() {
-	if [ $(id -u) -ne 0 ]; then
+	if [[ $(id -u) -ne 0 ]]; then
 		printf "Script must be run as root. Try 'sudo ./install.sh'\n"
 		exit 1
 	fi
 }
 
 success() {
-	echo -e "$(tput setaf 2)$1$(tput sgr0)"
+	echo -e "$(tput setaf 2)${1}$(tput sgr0)"
 }
 
 inform() {
-	echo -e "$(tput setaf 6)$1$(tput sgr0)"
+	echo -e "$(tput setaf 6)${1}$(tput sgr0)"
 }
 
 warning() {
-	echo -e "$(tput setaf 1)$1$(tput sgr0)"
+	echo -e "$(tput setaf 1)${1}$(tput sgr0)"
 }
 
 user_check
