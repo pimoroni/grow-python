@@ -1,13 +1,12 @@
 #!/bin/bash
 
 FORCE=false
-LIBRARY_NAME=`grep -m 1 name pyproject.toml | awk -F" = " '{print substr($2,2,length($2)-2)}'`
-RESOURCES_DIR=$HOME/Pimoroni/$LIBRARY_NAME
+LIBRARY_NAME=$(grep -m 1 name pyproject.toml | awk -F" = " '{print substr($2,2,length($2)-2)}')
+RESOURCES_DIR="$HOME/Pimoroni/${LIBRARY_NAME}"
 PYTHON="python"
 
-
 venv_check() {
-	PYTHON_BIN=`which $PYTHON`
+	PYTHON_BIN=$(command -v "${PYTHON}")
 	if [[ $VIRTUAL_ENV == "" ]] || [[ $PYTHON_BIN != $VIRTUAL_ENV* ]]; then
 		printf "This script should be run in a virtual Python environment.\n"
 		exit 1
