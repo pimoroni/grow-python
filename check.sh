@@ -1,11 +1,12 @@
 #!/bin/bash
+#shellcheck disable=SC2312
 
 # This script handles some basic QA checks on the source
 
 NOPOST=$1
-LIBRARY_NAME=`hatch project metadata name`
-LIBRARY_VERSION=`hatch version | awk -F "." '{print $1"."$2"."$3}'`
-POST_VERSION=`hatch version | awk -F "." '{print substr($4,0,length($4))}'`
+LIBRARY_NAME=$(hatch project metadata name)
+LIBRARY_VERSION=$(hatch version | awk -F "." '{print $1"."$2"."$3}')
+POST_VERSION=$(hatch version | awk -F "." '{print substr($4,0,length($4))}')
 TERM=${TERM:="xterm-256color"}
 
 success() {
@@ -21,15 +22,15 @@ warning() {
 }
 
 while [[ $# -gt 0 ]]; do
-	K="$1"
-	case $K in
+	K="${1}"
+	case ${K} in
 	-p|--nopost)
 		NOPOST=true
 		shift
 		;;
 	*)
 		if [[ $1 == -* ]]; then
-			printf "Unrecognised option: $1\n";
+			printf "Unrecognised option: %s\n" "${1}"
 			exit 1
 		fi
 		POSITIONAL_ARGS+=("$1")
@@ -37,11 +38,10 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-inform "Checking $LIBRARY_NAME $LIBRARY_VERSION\n"
-
+inform "Checking ${LIBRARY_NAME} ${LIBRARY_VERSION}\n"
 inform "Checking for trailing whitespace..."
-grep -IUrn --color "[[:blank:]]$" --exclude-dir=dist --exclude-dir=.tox --exclude-dir=.git --exclude=PKG-INFO
-if [[ $? -eq 0 ]]; then
+
+if grep -IUrn --color "[[:blank:]]$" --exclude-dir=dist --exclude-dir=.tox --exclude-dir=.git --exclude=PKG-INFO; then
     warning "Trailing whitespace found!"
     exit 1
 else
@@ -50,8 +50,8 @@ fi
 printf "\n"
 
 inform "Checking for DOS line-endings..."
-grep -lIUrn --color $'\r' --exclude-dir=dist --exclude-dir=.tox --exclude-dir=.git --exclude=Makefile
-if [[ $? -eq 0 ]]; then
+
+if grep -lIUrn --color $'\r' --exclude-dir=dist --exclude-dir=.tox --exclude-dir=.git --exclude=Makefile; then
     warning "DOS line-endings found!"
     exit 1
 else
@@ -60,7 +60,8 @@ fi
 printf "\n"
 
 inform "Checking CHANGELOG.md..."
-cat CHANGELOG.md | grep ^${LIBRARY_VERSION} > /dev/null 2>&1
+cat CHANGELOG.md | grep ^"${LIBRARY_VERSION}" > /dev/null 2>&1
+
 if [[ $? -eq 1 ]]; then
     warning "Changes missing for version ${LIBRARY_VERSION}! Please update CHANGELOG.md."
     exit 1
@@ -76,10 +77,10 @@ if [[ $? -eq 1 ]]; then
 fi
 printf "\n"
 
-if [[ $NOPOST ]]; then
+if [[ ${NOPOST} ]]; then
     inform "Checking for .postN on library version..."
-    if [[ "$POST_VERSION" != "" ]]; then
-        warning "Found .$POST_VERSION on library version."
+    if [[ "${POST_VERSION}" != "" ]]; then
+        warning "Found .${POST_VERSION} on library version."
         inform "Please only use these for testpypi releases."
         exit 1
     else
