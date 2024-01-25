@@ -195,7 +195,7 @@ apt_pkg_install "${PY3_DEPS[@]}"
 if $UNSTABLE; then
 	$PYTHON setup.py install > /dev/null
 else
-	$PYTHON -m pip install --upgrade $LIBRARY_NAME
+	$PYTHON -m pip install --upgrade $LIBRARY_NAME==0.0.3
 fi
 if [ $? -eq 0 ]; then
 	success "Done!\n"
