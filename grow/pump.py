@@ -2,13 +2,20 @@ import atexit
 import threading
 import time
 
-import RPi.GPIO as GPIO
+import gpiodevice
 
-PUMP_1_PIN = 17
-PUMP_2_PIN = 27
-PUMP_3_PIN = 22
+from . import pwm
+
+PUMP_1_PIN = "PIN11" # 17
+PUMP_2_PIN = "PIN13" # 27
+PUMP_3_PIN = "PIN15" # 22
 PUMP_PWM_FREQ = 10000
-PUMP_MAX_DUTY = 90
+PUMP_MAX_DUTY = 0.9
+
+PLATFORMS = {
+    "Raspberry Pi 5": {"pump1": ("PIN11", pwm.OUTL), "pump2": ("PIN12", pwm.OUTL), "pump3": ("PIN15", pwm.OUTL)},
+    "Raspberry Pi 4": {"pump1": ("GPIO17", pwm.OUTL), "pump2": ("GPIO27", pwm.OUTL), "pump3": ("GPIO22", pwm.OUTL)},
+}
 
 
 global_lock = threading.Lock()
@@ -16,6 +23,8 @@ global_lock = threading.Lock()
 
 class Pump(object):
     """Grow pump driver."""
+
+    PINS = None
 
     def __init__(self, channel=1):
         """Create a new pump.
@@ -26,21 +35,18 @@ class Pump(object):
 
         """
 
-        self._gpio_pin = [PUMP_1_PIN, PUMP_2_PIN, PUMP_3_PIN][channel - 1]
+        if Pump.PINS is None:
+            Pump.PINS = gpiodevice.get_pins_for_platform(PLATFORMS)
 
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.setup(self._gpio_pin, GPIO.OUT, initial=GPIO.LOW)
-        self._pwm = GPIO.PWM(self._gpio_pin, PUMP_PWM_FREQ)
+        self._gpio_pin = Pump.PINS[channel - 1]
+
+        self._pwm = pwm.PWM(self._gpio_pin, PUMP_PWM_FREQ)
         self._pwm.start(0)
 
+        pwm.PWM.start_thread()
+        atexit.register(pwm.PWM.stop_thread)
+
         self._timeout = None
-
-        atexit.register(self._stop)
-
-    def _stop(self):
-        self._pwm.stop(0)
-        GPIO.setup(self._gpio_pin, GPIO.IN)
 
     def set_speed(self, speed):
         """Set pump speed (PWM duty cycle)."""
@@ -52,7 +58,7 @@ class Pump(object):
         elif not global_lock.acquire(blocking=False):
             return False
 
-        self._pwm.ChangeDutyCycle(int(PUMP_MAX_DUTY * speed))
+        self._pwm.set_duty_cycle(PUMP_MAX_DUTY * speed)
         self._speed = speed
         return True
 

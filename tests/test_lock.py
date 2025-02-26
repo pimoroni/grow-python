@@ -1,8 +1,9 @@
 import time
 
 
-def test_pumps_actually_stop(GPIO, smbus):
+def test_pumps_actually_stop(gpiod, gpiodevice, smbus2):
     from grow.pump import Pump
+    from grow.pwm import PWM
 
     ch1 = Pump(channel=1)
 
@@ -10,9 +11,13 @@ def test_pumps_actually_stop(GPIO, smbus):
     time.sleep(0.1)
     assert ch1.get_speed() == 0
 
+    PWM.stop_thread()
 
-def test_pumps_are_mutually_exclusive(GPIO, smbus):
+
+
+def test_pumps_are_mutually_exclusive(gpiod, gpiodevice, smbus2):
     from grow.pump import Pump, global_lock
+    from grow.pwm import PWM
 
     ch1 = Pump(channel=1)
     ch2 = Pump(channel=2)
@@ -28,9 +33,13 @@ def test_pumps_are_mutually_exclusive(GPIO, smbus):
     assert ch3.dose(speed=0.5) is False
     assert ch3.dose(speed=0.5, blocking=False) is False
 
+    PWM.stop_thread()
 
-def test_pumps_run_sequentially(GPIO, smbus):
+
+
+def test_pumps_run_sequentially(gpiod, gpiodevice, smbus2):
     from grow.pump import Pump, global_lock
+    from grow.pwm import PWM
 
     ch1 = Pump(channel=1)
     ch2 = Pump(channel=2)
@@ -45,3 +54,5 @@ def test_pumps_run_sequentially(GPIO, smbus):
     assert ch3.dose(speed=0.5, timeout=0.1, blocking=False) is True
     assert global_lock.locked() is True
     time.sleep(0.3)
+
+    PWM.stop_thread()

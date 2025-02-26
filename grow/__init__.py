@@ -4,18 +4,28 @@ import atexit
 import threading
 import time
 
-import RPi.GPIO as GPIO
+import gpiodevice
+
+from . import pwm
+
+PLATFORMS = {
+    "Raspberry Pi 5": {"piezo": ("PIN33", pwm.OUTL)},
+    "Raspberry Pi 4": {"piezo": ("GPIO13", pwm.OUTL)},
+}
 
 
 class Piezo():
-    def __init__(self, gpio_pin=13):
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.setup(gpio_pin, GPIO.OUT, initial=GPIO.LOW)
-        self.pwm = GPIO.PWM(gpio_pin, 440)
-        self.pwm.start(0)
+    def __init__(self, gpio_pin=None):
+
+        if gpio_pin is None:
+            gpio_pin = gpiodevice.get_pins_for_platform(PLATFORMS)[0]
+        elif isinstance(gpio_pin, str):
+            gpio_pin = gpiodevice.get_pin(gpio_pin, "piezo", pwm.OUTL)
+
+        self.pwm = pwm.PWM(gpio_pin)
         self._timeout = None
-        atexit.register(self._exit)
+        pwm.PWM.start_thread()
+        atexit.register(pwm.PWM.stop_thread)
 
     def frequency(self, value):
         """Change the piezo frequency.
@@ -23,17 +33,15 @@ class Piezo():
         Loosely corresponds to musical pitch, if you suspend disbelief.
 
         """
-        self.pwm.ChangeFrequency(value)
+        self.pwm.set_frequency(value)
 
-    def start(self, frequency=None):
+    def start(self, frequency):
         """Start the piezo.
 
-        Sets the Duty Cycle to 100%
+        Sets the Duty Cycle to 50%
 
         """
-        if frequency is not None:
-            self.frequency(frequency)
-        self.pwm.ChangeDutyCycle(1)
+        self.pwm.start(frequency=frequency, duty_cycle=0.5)
 
     def stop(self):
         """Stop the piezo.
@@ -41,7 +49,7 @@ class Piezo():
         Sets the Duty Cycle to 0%
 
         """
-        self.pwm.ChangeDutyCycle(0)
+        self.pwm.stop()
 
     def beep(self, frequency=440, timeout=0.1, blocking=True, force=False):
         """Beep the piezo for time seconds.
@@ -67,6 +75,3 @@ class Piezo():
             self.start(frequency=frequency)
             self._timeout.start()
             return True
-
-    def _exit(self):
-        self.pwm.stop()
