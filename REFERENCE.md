@@ -62,7 +62,7 @@ sudo apt install python3-yaml python3-smbus python3-pil python3-spidev python3-r
 python3 -m pip install growhat
 ```
 
-This will also install the display driver - ST7735 - and a driver for the light sensor - LTR559.
+This will also install the display driver - st7735 - and a driver for the light sensor - LTR559.
 
 ## Reference
 
@@ -270,12 +270,12 @@ See the LTR559 library for a full reference: https://github.com/pimoroni/ltr559-
 
 ### Display
 
-The ST7735 display on Grow is 160x80 pixels and a great way to convey current watering status or build an interface for controlling your watering station.
+The st7735 display on Grow is 160x80 pixels and a great way to convey current watering status or build an interface for controlling your watering station.
 
 The display must be set up like so:
 
 ```python
-display = ST7735.ST7735(
+display = st7735.ST7735(
     port=0,
     cs=1,               # Chip select 1 (BCM )
     dc=9,               # BCM 9 is the data/command pin
@@ -292,4 +292,4 @@ You should use the Python Image Library to build up what you want to display, an
 display.display(image)
 ```
 
-See the examples for demonstrations of this. See the ST7735 library for a full reference: https://github.com/pimoroni/st7735-python/
+See the examples for demonstrations of this. See the st7735 library for a full reference: https://github.com/pimoroni/st7735-python/

@@ -8,10 +8,10 @@ import gpiodevice
 from gpiod import LineSettings
 from gpiod.line import Bias, Edge
 
-MOISTURE_1_PIN = 23
-MOISTURE_2_PIN = 8
-MOISTURE_3_PIN = 25
-MOISTURE_INT_PIN = 4
+MOISTURE_1_PIN = "GPIO23"
+MOISTURE_2_PIN = "GPIO8"
+MOISTURE_3_PIN = "GPIO25"
+MOISTURE_INT_PIN = "GPIO4"
 
 
 class Moisture(object):
@@ -46,25 +46,25 @@ class Moisture(object):
         ))
 
         self._poll_thread_event = threading.Event()
-        self._poll_thread = threading.Thread(target=self._thread_poll)
+        self._poll_thread = threading.Thread(target=(lambda: self._thread_poll(self._poll_thread_event)))
         self._poll_thread.start()
 
-        atexit.register(self._thread_stop)
+        atexit.register(lambda: self._thread_stop(self._poll_thread_event))
 
     def __del__(self):
-        self._thread_stop()
+        self._thread_stop(self._poll_thread_event)
 
-    def _thread_stop(self):
-        self._poll_thread_event.set()
+    def _thread_stop(self, event):
+        event.set()
         self._poll_thread.join()
 
-    def _thread_poll(self):
+    def _thread_poll(self, event):
         poll = select.poll()
         try:
             poll.register(self._int.fd, select.POLLIN)
         except TypeError:
             return
-        while not self._poll_thread_event.wait(1.0):
+        while not event.wait(1.0):
             if not poll.poll(0):
                 # No pulses in 1s, this is not a valid reading
                 continue

@@ -8,7 +8,7 @@ import time
 
 import ltr559
 import RPi.GPIO as GPIO
-import ST7735
+import st7735
 import yaml
 from fonts.ttf import RobotoMedium as UserFont
 from PIL import Image, ImageDraw, ImageFont
@@ -44,6 +44,12 @@ icon_settings = Image.open("icons/icon-settings.png").convert("RGBA")
 icon_channel = Image.open("icons/icon-channel.png").convert("RGBA")
 icon_backdrop = Image.open("icons/icon-backdrop.png").convert("RGBA")
 icon_return = Image.open("icons/icon-return.png").convert("RGBA")
+
+
+
+def _getbboxwidth(font, text):
+    left, top, right, bottom = font.getbbox(text, *args, **kwargs)
+    return right - left
 
 
 class View:
@@ -90,7 +96,9 @@ class View:
         if position not in ["A", "B", "X", "Y"]:
             raise ValueError(f"Invalid label position {position}")
 
-        text_w, text_h = self._draw.textsize(text, font=self.font)
+        left, top, right, bottom = self._draw.multiline_textbbox((0, 0), text, font=self.font)
+        text_w, text_h = right - left, bottom - top
+
         text_h = 11
         text_w += margin * 2
         text_h += margin * 2
@@ -143,7 +151,7 @@ class View:
 
                 while (
                     len(words) > 0
-                    and font.getsize(" ".join(line + [words[0]]))[0] <= width
+                    and _getbboxwidth(font, " ".join(line + [words[0]])) <= width
                 ):
                     line.append(words.pop(0))
 
@@ -161,7 +169,9 @@ class View:
                 bounds = [x2, y, x1, y + len(lines) * line_height]
 
                 for line in lines:
-                    line_width = font.getsize(line)[0]
+                    left, top, right, bottom = self.font.getbbox(line)
+                    line_width = right - left
+
                     x = int(x1 + (width / 2) - (line_width / 2))
                     bounds[0] = min(bounds[0], x)
                     bounds[2] = max(bounds[2], x + line_width)
@@ -222,7 +232,8 @@ class MainView(View):
         self.icon(icon_channel, (x, label_y), (200, 200, 200) if active else (64, 64, 64))
 
         # TODO: replace number text with graphic
-        tw, th = self.font.getsize(str(channel.channel))
+        left, top, right, bottom = self.font.getbbox(str(channel.channel))
+        tw, th = right - left, bottom - top
         self._draw.text(
             (x + int(math.ceil(8 - (tw / 2.0))), label_y + 1),
             str(channel.channel),
@@ -479,7 +490,8 @@ class DetailView(ChannelView):
 
         self.icon(icon_channel, (label_x, label_y), (200, 200, 200))
 
-        tw, th = self.font.getsize(str(self.channel.channel))
+        left, top, right, bottom = self.font.getbbox(str(channel.channel))
+        tw, th = right - left, bottom - top
         self._draw.text(
             (label_x + int(math.ceil(8 - (tw / 2.0))), label_y + 1),
             str(self.channel.channel),
@@ -1015,7 +1027,7 @@ def main():
 
 
     # Set up the ST7735 SPI Display
-    display = ST7735.ST7735(
+    display = st7735.ST7735(
         port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=80000000
     )
     display.begin()

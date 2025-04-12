@@ -9,8 +9,9 @@ import gpiodevice
 from . import pwm
 
 PLATFORMS = {
-    "Raspberry Pi 5": {"piezo": ("PIN33", pwm.OUTL)},
+    "Raspberry Pi 5": {"piezo": ("GPIO13", pwm.OUTL)},
     "Raspberry Pi 4": {"piezo": ("GPIO13", pwm.OUTL)},
+    "Raspberry Pi Zero": {"piezo": ("GPIO13", pwm.OUTL)},
 }
 
 
