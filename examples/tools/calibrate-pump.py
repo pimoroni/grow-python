@@ -2,7 +2,7 @@ import logging
 import time
 
 import RPi.GPIO as GPIO
-import ST7735
+import st7735
 from fonts.ttf import RobotoMedium as UserFont
 from PIL import Image, ImageDraw, ImageFont
 
@@ -51,7 +51,7 @@ mode = 0
 last_dose = time.time()
 saturation = [1.0 for _ in range(NUM_SAMPLES)]
 
-display = ST7735.ST7735(
+display = st7735.ST7735(
     port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=80000000
 )
 

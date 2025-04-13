@@ -2,7 +2,7 @@
 
 import logging
 
-import ST7735
+import st7735
 from fonts.ttf import RobotoMedium as UserFont
 from PIL import Image, ImageDraw, ImageFont
 
@@ -21,7 +21,7 @@ Press Ctrl+C to exit!
 )
 
 # Create LCD class instance.
-disp = ST7735.ST7735(
+disp = st7735.ST7735(
     port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=10000000
 )
 
@@ -43,7 +43,9 @@ text_colour = (255, 255, 255)
 back_colour = (0, 170, 170)
 
 message = "Hello, World!"
-size_x, size_y = draw.textsize(message, font)
+left, top, right, bottom = draw.multiline_textbbox((0, 0), message, font)
+size_x, size_y = right - left, bottom - top
+
 
 # Calculate text position
 x = (WIDTH - size_x) / 2
