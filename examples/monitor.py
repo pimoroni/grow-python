@@ -47,7 +47,7 @@ icon_return = Image.open("icons/icon-return.png").convert("RGBA")
 
 
 
-def _getbboxwidth(font, text):
+def _getbboxwidth(font, text, *args, **kwargs):
     left, top, right, bottom = font.getbbox(text, *args, **kwargs)
     return right - left
 
@@ -490,7 +490,7 @@ class DetailView(ChannelView):
 
         self.icon(icon_channel, (label_x, label_y), (200, 200, 200))
 
-        left, top, right, bottom = self.font.getbbox(str(channel.channel))
+        left, top, right, bottom = self.font.getbbox(str(self.channel.channel))
         tw, th = right - left, bottom - top
         self._draw.text(
             (label_x + int(math.ceil(8 - (tw / 2.0))), label_y + 1),
