@@ -8,9 +8,10 @@ import time
 
 import ltr559
 import RPi.GPIO as GPIO
-import ST7735
+import st7735 as ST7735
 import yaml
-from fonts.ttf import RobotoMedium as UserFont
+from importlib.resources import files
+UserFont = str(files("font_roboto").joinpath("files/Roboto-Medium.ttf"))
 from PIL import Image, ImageDraw, ImageFont
 
 from grow import Piezo
