@@ -39,7 +39,7 @@ class Pump(object):
         atexit.register(self._stop)
 
     def _stop(self):
-        self._pwm.stop(0)
+        self._pwm.stop()
         GPIO.setup(self._gpio_pin, GPIO.IN)
 
     def set_speed(self, speed):
